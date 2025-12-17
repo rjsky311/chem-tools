@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>化學結構預覽工具</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: white;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .input-section {
+            width: 100%;
+            max-width: 600px;
+            margin-bottom: 20px;
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+        }
+        #smiles-input {
+            flex: 1;
+            padding: 10px 15px;
+            font-size: 16px;
+            border: 2px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        #smiles-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+        #smiles-input.error {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+        }
+        #smiles-input.error:focus {
+            border-color: #dc3545;
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2);
+        }
+        #draw-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #draw-btn:hover {
+            background-color: #0056b3;
+        }
+        #draw-btn:active {
+            background-color: #004494;
+        }
+        #copy-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s, opacity 0.2s;
+        }
+        #copy-btn:hover:not(:disabled) {
+            background-color: #1e7e34;
+        }
+        #copy-btn:active:not(:disabled) {
+            background-color: #1c7430;
+        }
+        #copy-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+        #copy-btn.copied {
+            background-color: #17a2b8;
+        }
+        .error-container {
+            min-height: 24px;
+            margin-top: 8px;
+        }
+        .error-message {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            color: #dc3545;
+            font-size: 14px;
+            padding: 8px 12px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+        }
+        .error-message.visible {
+            display: flex;
+        }
+        .error-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .canvas-container {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 20px;
+            background-color: white;
+        }
+        #structure-canvas {
+            display: block;
+            background-color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>化學結構預覽工具</h1>
+
+    <div class="input-section">
+        <div class="input-container">
+            <input
+                type="text"
+                id="smiles-input"
+                placeholder="輸入 SMILES 字串..."
+                value="CC(=O)OC1=CC=CC=C1C(=O)O"
+            >
+            <button id="draw-btn">Show Structure</button>
+            <button id="copy-btn" disabled>Copy Image</button>
+        </div>
+        <div class="error-container">
+            <div id="error-display" class="error-message">
+                <span class="error-icon">&#9888;</span>
+                <span id="error-text"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="structure-canvas" width="500" height="400"></canvas>
+    </div>
+
+    <script src="https://unpkg.com/smiles-drawer@2.0.1/dist/smiles-drawer.min.js"></script>
+    <script>
+        // Debug: 確認 smiles-drawer 載入狀態
+        console.log('smiles-drawer loaded:', typeof SmilesDrawer !== 'undefined');
+
+        // 設定繪圖選項 - 學術期刊風格
+        const options = {
+            width: 500,
+            height: 400,
+            bondThickness: 1.5,
+            bondLength: 25,
+            shortBondLength: 0.8,
+            bondSpacing: 4,
+            atomVisualization: 'default',
+            isomeric: true,
+            debug: false,
+            // 顯示末端碳原子 (如 COOH 中的 C)
+            terminalCarbons: true,
+            explicitHydrogens: false,
+            overlapSensitivity: 0.42,
+            overlapResolutionIterations: 1,
+            compactDrawing: true,
+            fontSizeLarge: 11,
+            fontSizeSmall: 6,
+            padding: 20,
+            themes: {
+                dark: {
+                    C: '#000000',
+                    O: '#000000',
+                    N: '#000000',
+                    F: '#000000',
+                    CL: '#000000',
+                    BR: '#000000',
+                    I: '#000000',
+                    P: '#000000',
+                    S: '#000000',
+                    B: '#000000',
+                    SI: '#000000',
+                    H: '#000000',
+                    BACKGROUND: '#ffffff'
+                }
+            }
+        };
+
+        // 初始化 SmilesDrawer
+        const drawer = new SmilesDrawer.Drawer(options);
+
+        const canvas = document.getElementById('structure-canvas');
+        const input = document.getElementById('smiles-input');
+        const drawBtn = document.getElementById('draw-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const errorDisplay = document.getElementById('error-display');
+        const errorText = document.getElementById('error-text');
+
+        // 顯示錯誤訊息
+        function showError(message) {
+            errorText.textContent = message;
+            errorDisplay.classList.add('visible');
+            input.classList.add('error');
+            // 發生錯誤時禁用複製按鈕
+            copyBtn.disabled = true;
+        }
+
+        // 清除錯誤訊息
+        function clearError() {
+            errorDisplay.classList.remove('visible');
+            input.classList.remove('error');
+            errorText.textContent = '';
+        }
+
+        // 清除畫布
+        function clearCanvas() {
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // 繪製結構的函數
+        function drawStructure() {
+            const smiles = input.value.trim();
+            clearError();
+
+            if (!smiles) {
+                console.log('Error: SMILES input is empty');
+                showError('請輸入 SMILES 字串');
+                return;
+            }
+
+            console.log('Attempting to draw SMILES:', smiles);
+
+            try {
+                SmilesDrawer.parse(smiles, function(tree) {
+                    console.log('SMILES parsed successfully:', tree);
+
+                    // 清除畫布
+                    clearCanvas();
+
+                    // 繪製結構
+                    drawer.draw(tree, canvas, 'dark', false);
+                    console.log('Structure drawn successfully');
+
+                    // 繪製成功，啟用複製按鈕
+                    copyBtn.disabled = false;
+                }, function(err) {
+                    console.error('SMILES parsing failed:', err);
+                    clearCanvas();
+                    showError('Invalid SMILES string: ' + (err || '無法解析此 SMILES 字串'));
+                });
+            } catch (e) {
+                console.error('Error during drawing:', e);
+                clearCanvas();
+                showError('繪製錯誤: ' + e.message);
+            }
+        }
+
+        // 複製圖片到剪貼簿
+        async function copyImage() {
+            try {
+                // 將 Canvas 轉換為 Blob
+                const blob = await new Promise(resolve => {
+                    canvas.toBlob(resolve, 'image/png');
+                });
+
+                // 複製到剪貼簿
+                await navigator.clipboard.write([
+                    new ClipboardItem({ 'image/png': blob })
+                ]);
+
+                // 顯示成功回饋
+                const originalText = copyBtn.textContent;
+                copyBtn.textContent = 'Copied!';
+                copyBtn.classList.add('copied');
+
+                // 2 秒後恢復原始文字
+                setTimeout(() => {
+                    copyBtn.textContent = originalText;
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+
+                console.log('Image copied to clipboard successfully');
+            } catch (err) {
+                console.error('Failed to copy image:', err);
+                alert('複製失敗: ' + err.message);
+            }
+        }
+
+        // 當輸入內容改變時清除錯誤狀態
+        input.addEventListener('input', function() {
+            if (input.classList.contains('error')) {
+                clearError();
+            }
+        });
+
+        // 綁定按鈕事件
+        drawBtn.addEventListener('click', drawStructure);
+        copyBtn.addEventListener('click', copyImage);
+
+        // 按 Enter 鍵也可以觸發繪製
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                drawStructure();
+            }
+        });
+
+        // 頁面載入時自動繪製預設的 Aspirin 結構
+        window.addEventListener('load', function() {
+            console.log('Page loaded, drawing default structure (Aspirin)');
+            drawStructure();
+        });
+    </script>
+</body>
+</html>
