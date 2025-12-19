@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Reaction Planner</title>
+    <style>
+        /* ===== CSS Variables & Reset ===== */
+        :root {
+            --primary-color: #007bff;
+            --text-color: #000000;
+            --background: #ffffff;
+            --border-color: #ddd;
+            --error-color: #dc3545;
+            --success-color: #28a745;
+            --card-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --limiting-reagent-bg: #f0f8ff;
+            --table-header-bg: #f8f9fa;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+
+        /* ===== Layout ===== */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-rows: auto auto 1fr auto;
+            gap: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            color: #333;
+            margin: 0;
+            font-size: 28px;
+        }
+
+        h2 {
+            color: #333;
+            margin: 0 0 15px 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        /* ===== Card & Section Styles ===== */
+        .card {
+            background: var(--background);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: var(--card-shadow);
+        }
+
+        /* ===== Reaction Scheme Section ===== */
+        .reaction-display {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+
+        .molecule-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            min-width: 280px;
+        }
+
+        .molecule-container label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .molecule-container input {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        canvas {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: white;
+            max-width: 100%;
+            height: auto;
+        }
+
+        canvas.error {
+            border-color: var(--error-color);
+            border-width: 2px;
+        }
+
+        .error-message {
+            color: var(--error-color);
+            font-size: 12px;
+            min-height: 16px;
+            margin-top: 4px;
+        }
+
+        .arrow-container {
+            font-size: 48px;
+            color: #333;
+            font-weight: bold;
+            margin: 0 10px;
+        }
+
+        /* ===== Form Elements ===== */
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-family: var(--font-family);
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        input.error {
+            border-color: var(--error-color);
+            box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+        }
+
+        input[type="text"].smiles-input {
+            font-family: monospace;
+        }
+
+        input[readonly] {
+            background-color: #f8f9fa;
+            cursor: not-allowed;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-family: var(--font-family);
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        button:active {
+            background-color: #004494;
+        }
+
+        button.success {
+            background-color: var(--success-color);
+        }
+
+        button.success:hover {
+            background-color: #1e7e34;
+        }
+
+        button.remove-btn {
+            background-color: var(--error-color);
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        button.remove-btn:hover {
+            background-color: #c82333;
+        }
+
+        #exportBtn {
+            background-color: var(--success-color);
+        }
+
+        #exportBtn:hover {
+            background-color: #1e7e34;
+        }
+
+        /* ===== Table Styles ===== */
+        .table-controls {
+            margin-bottom: 15px;
+        }
+
+        #stoich-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        #stoich-table thead {
+            background: var(--table-header-bg);
+            font-weight: 600;
+        }
+
+        #stoich-table th,
+        #stoich-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        #stoich-table th {
+            font-size: 14px;
+            color: #555;
+        }
+
+        #stoich-table td {
+            font-size: 14px;
+        }
+
+        .limiting-reagent {
+            background: var(--limiting-reagent-bg);
+            font-weight: 500;
+        }
+
+        #stoich-table input[type="text"],
+        #stoich-table input[type="number"] {
+            width: 100%;
+            max-width: 150px;
+            padding: 6px 10px;
+            font-size: 13px;
+        }
+
+        #stoich-table input.reagent-name {
+            max-width: 200px;
+        }
+
+        .reagent-mmol {
+            font-weight: 500;
+            color: #333;
+        }
+
+        /* ===== CAS Input Group & Fetch Button ===== */
+        .cas-input-group {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+        }
+
+        .cas-input {
+            flex: 1;
+            min-width: 100px;
+            padding: 6px 10px;
+            font-size: 13px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .cas-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
+        .fetch-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background-color 0.2s;
+        }
+
+        .fetch-btn:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        .fetch-btn:active:not(:disabled) {
+            background-color: #004494;
+        }
+
+        .fetch-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            opacity: 0.65;
+        }
+
+        .fetch-btn.loading {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        /* ===== Conditions Section ===== */
+        .conditions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 6px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* ===== Responsive Design ===== */
+        @media (max-width: 768px) {
+            .reaction-display {
+                flex-direction: column;
+            }
+
+            .arrow-container {
+                transform: rotate(90deg);
+            }
+
+            h1 {
+                font-size: 22px;
+            }
+
+            header {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            #stoich-table {
+                font-size: 12px;
+            }
+
+            #stoich-table th,
+            #stoich-table td {
+                padding: 8px;
+            }
+        }
+
+        /* ===== Print Media Queries ===== */
+        @media print {
+            body {
+                margin: 0;
+                padding: 10px;
+                background: white;
+            }
+
+            .container {
+                max-width: 100%;
+                padding: 0;
+            }
+
+            /* Hide interactive elements */
+            button,
+            .table-controls {
+                display: none !important;
+            }
+
+            /* Ensure cards print with borders */
+            .card {
+                page-break-inside: avoid;
+                box-shadow: none;
+                margin-bottom: 15px;
+                border: 1px solid #ccc;
+            }
+
+            /* Optimize canvas for print */
+            canvas {
+                max-width: 300px;
+                height: auto;
+            }
+
+            /* Optimize table for print */
+            #stoich-table {
+                font-size: 11px;
+            }
+
+            #stoich-table th,
+            #stoich-table td {
+                padding: 6px;
+            }
+
+            /* Hide CAS column (2nd column) in print */
+            #stoich-table th:nth-child(2),
+            #stoich-table td:nth-child(2) {
+                display: none;
+            }
+
+            /* Remove last column (Actions) in print */
+            #stoich-table th:last-child,
+            #stoich-table td:last-child {
+                display: none;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            h2 {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Digital Reaction Planner</h1>
+            <button id="exportBtn" aria-label="Print or export reaction plan">Print/Export</button>
+        </header>
+
+        <!-- Reaction Scheme Section -->
+        <section id="reaction-scheme" class="card">
+            <h2>Reaction Scheme</h2>
+            <div class="reaction-display">
+                <div class="molecule-container">
+                    <label for="sm-smiles">Starting Material SMILES</label>
+                    <input type="text" id="sm-smiles" class="smiles-input" placeholder="Enter SMILES notation">
+                    <canvas id="sm-canvas" width="300" height="250"></canvas>
+                    <span class="error-message" id="sm-error"></span>
+                </div>
+                <div class="arrow-container">
+                    →
+                </div>
+                <div class="molecule-container">
+                    <label for="product-smiles">Product SMILES</label>
+                    <input type="text" id="product-smiles" class="smiles-input" placeholder="Enter SMILES notation">
+                    <canvas id="product-canvas" width="300" height="250"></canvas>
+                    <span class="error-message" id="product-error"></span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Stoichiometry Table Section -->
+        <section id="stoichiometry-section" class="card">
+            <h2>Stoichiometry Table</h2>
+            <div class="table-controls">
+                <button id="add-reagent" aria-label="Add new reagent row">+ Add Reagent</button>
+            </div>
+            <table id="stoich-table">
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>CAS No.</th>
+                        <th>MW (g/mol)</th>
+                        <th>Equivalents</th>
+                        <th>Amount (mmol)</th>
+                        <th>Mass (mg)</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="stoich-tbody">
+                    <!-- Limiting reagent row (fixed) -->
+                    <tr id="limiting-reagent-row" class="limiting-reagent">
+                        <td>Starting Material (Limiting Reagent)</td>
+                        <td>
+                            <div class="cas-input-group">
+                                <input type="text" id="sm-cas" placeholder="CAS No." class="cas-input" aria-label="Starting Material CAS Number">
+                                <button id="sm-fetch-btn" class="fetch-btn" aria-label="Fetch data from PubChem">Fetch</button>
+                            </div>
+                        </td>
+                        <td><input type="number" id="sm-mw" step="0.01" min="0" placeholder="MW" aria-label="Starting Material Molecular Weight"></td>
+                        <td>1.00</td>
+                        <td><input type="number" id="sm-mmol" step="0.001" readonly placeholder="Calculated" aria-label="Starting Material Amount in mmol" aria-readonly="true"></td>
+                        <td><input type="number" id="sm-mass" step="0.1" min="0" placeholder="Mass" aria-label="Starting Material Mass in mg"></td>
+                        <td>-</td>
+                    </tr>
+                    <!-- Dynamic reagent rows will be added here -->
+                </tbody>
+            </table>
+        </section>
+
+        <!-- Conditions Section -->
+        <section id="conditions-section" class="card">
+            <h2>Conditions & Notes</h2>
+            <div class="conditions-grid">
+                <div class="form-group">
+                    <label for="solvent">Solvent</label>
+                    <input type="text" id="solvent" placeholder="e.g., Water, DCM">
+                </div>
+                <div class="form-group">
+                    <label for="temperature">Temperature</label>
+                    <input type="text" id="temperature" placeholder="e.g., 25°C, rt">
+                </div>
+                <div class="form-group">
+                    <label for="time">Time</label>
+                    <input type="text" id="time" placeholder="e.g., 2 h, overnight">
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="notes">Additional Notes</label>
+                <textarea id="notes" rows="4" placeholder="Enter reaction notes, observations, or special conditions..."></textarea>
+            </div>
+        </section>
+    </div>
+
+    <!-- External Library -->
+    <script src="https://unpkg.com/smiles-drawer@2.0.1/dist/smiles-drawer.min.js"></script>
+
+    <script>
+        /**
+         * Digital Reaction Planner
+         * A tool for calculating stoichiometry and planning chemistry reactions
+         *
+         * Features:
+         * - SMILES structure rendering for starting materials and products
+         * - Automatic stoichiometry calculations (mass ↔ mmol ↔ equivalents)
+         * - Bidirectional calculation support (forward and reverse)
+         * - Dynamic reagent table management
+         * - Print/export functionality
+         */
+
+        // ===== Global State & Configuration =====
+
+        // Central data model - single source of truth for all reaction data
+        const reactionPlan = {
+            startingMaterial: {
+                smiles: '',
+                mw: 0,
+                mass: 0,
+                mmol: 0,
+                cas: ''
+            },
+            product: {
+                smiles: ''
+            },
+            reagents: [],
+            conditions: {
+                solvent: '',
+                temperature: '',
+                time: '',
+                notes: ''
+            }
+        };
+
+        let reagentCounter = 0;
+        let drawer = null;
+
+        // ===== Utility Functions =====
+
+        // Debounce function to prevent excessive re-renders
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // ===== SMILES Rendering Module =====
+
+        // Initialize SmilesDrawer with academic configuration
+        function initializeSmilesDrawer() {
+            drawer = new SmilesDrawer.Drawer({
+                width: 300,
+                height: 250,
+                bondThickness: 1.5,
+                bondLength: 25,
+                shortBondLength: 0.8,
+                bondSpacing: 4,
+                atomVisualization: 'default',
+                isomeric: true,
+                debug: false,
+                terminalCarbons: true,
+                explicitHydrogens: false,
+                overlapSensitivity: 0.42,
+                overlapResolutionIterations: 1,
+                compactDrawing: true,
+                fontSizeLarge: 11,
+                fontSizeSmall: 6,
+                padding: 20,
+                themes: {
+                    dark: {
+                        C: '#000000',
+                        O: '#000000',
+                        N: '#000000',
+                        F: '#000000',
+                        CL: '#000000',
+                        BR: '#000000',
+                        I: '#000000',
+                        P: '#000000',
+                        S: '#000000',
+                        B: '#000000',
+                        SI: '#000000',
+                        H: '#000000',
+                        BACKGROUND: '#ffffff'
+                    }
+                }
+            });
+        }
+
+        // Clear canvas
+        function clearCanvas(canvasId) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Draw structure from SMILES
+        function drawStructure(smiles, canvasId, errorElementId) {
+            const canvas = document.getElementById(canvasId);
+            const errorElement = document.getElementById(errorElementId);
+
+            if (!smiles || smiles.trim() === '') {
+                clearCanvas(canvasId);
+                canvas.classList.remove('error');
+                errorElement.textContent = '';
+                return;
+            }
+
+            try {
+                SmilesDrawer.parse(smiles, function(tree) {
+                    // Success - draw structure
+                    clearCanvas(canvasId);
+                    drawer.draw(tree, canvas, 'dark', false);
+                    canvas.classList.remove('error');
+                    errorElement.textContent = '';
+                }, function(err) {
+                    // Error - show feedback
+                    console.error('SMILES parsing error:', err);
+                    clearCanvas(canvasId);
+                    canvas.classList.add('error');
+                    errorElement.textContent = 'Invalid SMILES notation';
+                });
+            } catch (error) {
+                console.error('Drawing error:', error);
+                clearCanvas(canvasId);
+                canvas.classList.add('error');
+                errorElement.textContent = 'Error rendering structure';
+            }
+        }
+
+        // ===== Data Model Updates =====
+
+        function updateStartingMaterialData() {
+            reactionPlan.startingMaterial.smiles = document.getElementById('sm-smiles').value;
+            reactionPlan.startingMaterial.mw = parseFloat(document.getElementById('sm-mw').value) || 0;
+            reactionPlan.startingMaterial.mass = parseFloat(document.getElementById('sm-mass').value) || 0;
+            reactionPlan.startingMaterial.cas = document.getElementById('sm-cas').value || '';
+        }
+
+        function updateProductData() {
+            reactionPlan.product.smiles = document.getElementById('product-smiles').value;
+        }
+
+        function updateConditionsData() {
+            reactionPlan.conditions.solvent = document.getElementById('solvent').value;
+            reactionPlan.conditions.temperature = document.getElementById('temperature').value;
+            reactionPlan.conditions.time = document.getElementById('time').value;
+            reactionPlan.conditions.notes = document.getElementById('notes').value;
+        }
+
+        // ===== Stoichiometry Calculation Module =====
+
+        // Calculate SM mmol from mass and MW
+        function calculateSMMmol() {
+            const mass = parseFloat(document.getElementById('sm-mass').value) || 0;
+            const mw = parseFloat(document.getElementById('sm-mw').value) || 0;
+
+            if (mass > 0 && mw > 0) {
+                // Formula: mmol = (mass in mg / MW) * 1000
+                const mmol = (mass / mw);
+                reactionPlan.startingMaterial.mmol = mmol;
+                document.getElementById('sm-mmol').value = mmol.toFixed(3);
+
+                // Recalculate all reagents when SM mmol changes
+                recalculateAllReagents();
+            } else {
+                reactionPlan.startingMaterial.mmol = 0;
+                document.getElementById('sm-mmol').value = '';
+                recalculateAllReagents();
+            }
+        }
+
+        // Calculate reagent mass from MW and equivalents (forward calculation)
+        function calculateReagentMass(reagentRow) {
+            const smMmol = reactionPlan.startingMaterial.mmol;
+            const mwInput = reagentRow.querySelector('.reagent-mw');
+            const eqInput = reagentRow.querySelector('.reagent-eq');
+            const massInput = reagentRow.querySelector('.reagent-mass');
+            const mmolDisplay = reagentRow.querySelector('.reagent-mmol');
+
+            const mw = parseFloat(mwInput.value) || 0;
+            const eq = parseFloat(eqInput.value) || 0;
+
+            if (smMmol > 0 && mw > 0 && eq >= 0) {
+                // Formula: reagentMmol = SM mmol * equivalents
+                const reagentMmol = smMmol * eq;
+                // Formula: mass (mg) = reagentMmol * MW
+                const mass = reagentMmol * mw;
+
+                mmolDisplay.textContent = reagentMmol.toFixed(3);
+                massInput.value = mass.toFixed(1);
+
+                return { mmol: reagentMmol, mass: mass };
+            } else {
+                mmolDisplay.textContent = '-';
+                if (!massInput.dataset.manualOverride) {
+                    massInput.value = '';
+                }
+                return { mmol: 0, mass: 0 };
+            }
+        }
+
+        // Calculate reagent equivalents from mass (reverse calculation)
+        function calculateReagentEquivalents(reagentRow) {
+            const smMmol = reactionPlan.startingMaterial.mmol;
+            const mwInput = reagentRow.querySelector('.reagent-mw');
+            const eqInput = reagentRow.querySelector('.reagent-eq');
+            const massInput = reagentRow.querySelector('.reagent-mass');
+            const mmolDisplay = reagentRow.querySelector('.reagent-mmol');
+
+            const mw = parseFloat(mwInput.value) || 0;
+            const mass = parseFloat(massInput.value) || 0;
+
+            if (smMmol > 0 && mw > 0 && mass > 0) {
+                // Formula: reagentMmol = mass / MW
+                const reagentMmol = mass / mw;
+                // Formula: equivalents = reagentMmol / SM mmol
+                const eq = reagentMmol / smMmol;
+
+                mmolDisplay.textContent = reagentMmol.toFixed(3);
+                eqInput.value = eq.toFixed(2);
+
+                return { eq: eq, mmol: reagentMmol };
+            } else {
+                // Cannot calculate
+                return null;
+            }
+        }
+
+        // Recalculate all reagent rows
+        function recalculateAllReagents() {
+            const reagentRows = document.querySelectorAll('.reagent-row');
+            reagentRows.forEach(row => {
+                // Only recalculate if not manually overridden
+                if (!row.querySelector('.reagent-mass').dataset.manualOverride) {
+                    calculateReagentMass(row);
+                }
+            });
+        }
+
+        // ===== PubChem API Integration Module =====
+
+        /**
+         * Fetch compound data from PubChem by CAS number
+         * @param {string} cas - CAS registry number (e.g., "50-78-2")
+         * @returns {Promise<Object>} - Compound data {mw, name, smiles}
+         */
+        async function fetchPubChemData(cas) {
+            if (!cas || cas.trim() === '') {
+                throw new Error('CAS number is required');
+            }
+
+            const cleanCas = cas.trim();
+
+            // Construct API URL - explicitly include all SMILES properties
+            const apiUrl = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(cleanCas)}/property/MolecularWeight,IUPACName,CanonicalSMILES,IsomericSMILES/JSON`;
+
+            console.log('=== PubChem Fetch Debug ===');
+            console.log('CAS Number:', cleanCas);
+            console.log('Final Request URL:', apiUrl);
+
+            try {
+                const response = await fetch(apiUrl);
+                console.log('Response Status:', response.status, response.statusText);
+
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('CAS not found in PubChem database');
+                    }
+                    throw new Error(`PubChem API error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Full API Response:', JSON.stringify(data, null, 2));
+
+                if (!data.PropertyTable || !data.PropertyTable.Properties || data.PropertyTable.Properties.length === 0) {
+                    throw new Error('No compound data found');
+                }
+
+                const compound = data.PropertyTable.Properties[0];
+                console.log('Compound Object Keys:', Object.keys(compound));
+                console.log('Compound data extracted:', compound);
+
+                // Try multiple ways to extract SMILES
+                let smiles = '';
+
+                // Method 1: Direct property access
+                if (compound.IsomericSMILES) {
+                    smiles = compound.IsomericSMILES;
+                    console.log('SMILES found via IsomericSMILES property:', smiles);
+                } else if (compound.CanonicalSMILES) {
+                    smiles = compound.CanonicalSMILES;
+                    console.log('SMILES found via CanonicalSMILES property:', smiles);
+                } else if (compound.SMILES) {
+    smiles = compound.SMILES;
+} else {
+                    console.error('SMILES not found in compound properties');
+                    console.error('Available properties:', Object.keys(compound));
+                }
+
+                const result = {
+                    mw: parseFloat(compound.MolecularWeight) || 0,
+                    name: compound.IUPACName || '',
+                    smiles: smiles
+                };
+
+                console.log('Final parsed result:', result);
+                console.log('=== End Debug ===');
+                return result;
+            } catch (error) {
+                console.error('PubChem fetch error:', error);
+                throw error;
+            }
+        }
+
+        /**
+         * Populate Starting Material fields with PubChem data
+         * @param {Object} data - {mw, name, smiles}
+         */
+        function populateStartingMaterialFromPubChem(data) {
+            console.log('[SM Populate] Starting with data:', data);
+
+            // Fill MW (ensure it's a number before calling toFixed)
+            const mwValue = parseFloat(data.mw) || 0;
+            document.getElementById('sm-mw').value = mwValue.toFixed(2);
+            console.log('[SM Populate] MW set to:', mwValue.toFixed(2));
+
+            // Fill SMILES - with validation and fallback
+            const smilesInput = document.getElementById('sm-smiles');
+            if (data.smiles && data.smiles.trim() !== '') {
+                smilesInput.value = data.smiles.trim();
+                console.log('[SM Populate] SMILES set to:', data.smiles.trim());
+            } else {
+                smilesInput.value = '';
+                console.error('[SM Populate] SMILES not found or empty in API data');
+                alert('Warning: SMILES data not available from PubChem for this compound');
+            }
+
+            // Update data model
+            updateStartingMaterialData();
+
+            // Auto-draw structure - force immediate drawing
+            const smilesValue = smilesInput.value;
+            if (smilesValue && smilesValue.trim() !== '') {
+                console.log('[SM Populate] Drawing structure with SMILES:', smilesValue);
+                drawStructure(smilesValue, 'sm-canvas', 'sm-error');
+            } else {
+                console.warn('[SM Populate] Skipping structure drawing - no valid SMILES');
+            }
+
+            // Recalculate if mass is already entered
+            if (document.getElementById('sm-mass').value) {
+                calculateSMMmol();
+            }
+
+            console.log('[SM Populate] Population complete');
+        }
+
+        /**
+         * Populate Reagent fields with PubChem data
+         * @param {Object} data - {mw, name, smiles}
+         * @param {HTMLElement} row - Reagent row element
+         * @param {string} reagentId - Reagent ID (e.g., 'r1')
+         */
+        function populateReagentFromPubChem(data, row, reagentId) {
+            console.log(`[Reagent ${reagentId} Populate] Starting with data:`, data);
+
+            // Fill Name (IUPAC) - with validation
+            const nameInput = row.querySelector('.reagent-name');
+            if (data.name && data.name.trim() !== '') {
+                nameInput.value = data.name.trim();
+                console.log(`[Reagent ${reagentId} Populate] Name set to:`, data.name.trim());
+            } else {
+                nameInput.value = 'Unknown compound';
+                console.warn(`[Reagent ${reagentId} Populate] Name not found, using default`);
+            }
+
+            // Fill MW (ensure it's a number before calling toFixed)
+            const mwInput = row.querySelector('.reagent-mw');
+            const mwValue = parseFloat(data.mw) || 0;
+            mwInput.value = mwValue.toFixed(2);
+            console.log(`[Reagent ${reagentId} Populate] MW set to:`, mwValue.toFixed(2));
+
+            // Validate SMILES data (for logging purposes)
+            if (!data.smiles || data.smiles.trim() === '') {
+                console.warn(`[Reagent ${reagentId} Populate] SMILES not available from PubChem`);
+            } else {
+                console.log(`[Reagent ${reagentId} Populate] SMILES available:`, data.smiles);
+            }
+
+            // Update data model
+            updateReagentInModel(reagentId, row);
+
+            // Trigger calculation (if SM data exists)
+            if (reactionPlan.startingMaterial.mmol > 0) {
+                const massInput = row.querySelector('.reagent-mass');
+                massInput.dataset.manualOverride = '';
+                calculateReagentMass(row);
+            }
+
+            console.log(`[Reagent ${reagentId} Populate] Population complete`);
+        }
+
+        /**
+         * Handle SM Fetch button click
+         */
+        async function handleSMFetch() {
+            const casInput = document.getElementById('sm-cas');
+            const fetchBtn = document.getElementById('sm-fetch-btn');
+            const cas = casInput.value.trim();
+
+            console.log('[SM Fetch] Starting fetch for CAS:', cas);
+
+            if (!cas) {
+                alert('Please enter a CAS number');
+                return;
+            }
+
+            // Set loading state
+            fetchBtn.disabled = true;
+            fetchBtn.textContent = 'Loading...';
+            fetchBtn.classList.add('loading');
+
+            try {
+                console.log('[SM Fetch] Calling fetchPubChemData...');
+                const data = await fetchPubChemData(cas);
+                console.log('[SM Fetch] Data received:', data);
+
+                console.log('[SM Fetch] Calling populateStartingMaterialFromPubChem...');
+                populateStartingMaterialFromPubChem(data);
+
+                // Success feedback
+                fetchBtn.disabled = false;
+                fetchBtn.classList.remove('loading');
+                fetchBtn.textContent = 'Fetched!';
+                console.log('[SM Fetch] Fetch successful!');
+                setTimeout(() => {
+                    fetchBtn.textContent = 'Fetch';
+                }, 1500);
+            } catch (error) {
+                console.error('[SM Fetch] Error occurred:', error);
+                // Reset button state immediately on error
+                fetchBtn.disabled = false;
+                fetchBtn.classList.remove('loading');
+                fetchBtn.textContent = 'Fetch';
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        /**
+         * Handle Reagent Fetch button click
+         * @param {string} reagentId - Reagent ID (e.g., 'r1')
+         */
+        async function handleReagentFetch(reagentId) {
+            const row = document.querySelector(`[data-reagent-id="${reagentId}"]`);
+            if (!row) return;
+
+            const casInput = row.querySelector('.reagent-cas');
+            const fetchBtn = row.querySelector('.reagent-fetch-btn');
+            const cas = casInput.value.trim();
+
+            if (!cas) {
+                alert('Please enter a CAS number');
+                return;
+            }
+
+            // Set loading state
+            fetchBtn.disabled = true;
+            fetchBtn.textContent = 'Loading...';
+            fetchBtn.classList.add('loading');
+
+            try {
+                const data = await fetchPubChemData(cas);
+                populateReagentFromPubChem(data, row, reagentId);
+
+                // Success feedback
+                fetchBtn.disabled = false;
+                fetchBtn.classList.remove('loading');
+                fetchBtn.textContent = 'Fetched!';
+                setTimeout(() => {
+                    fetchBtn.textContent = 'Fetch';
+                }, 1500);
+            } catch (error) {
+                console.error('Fetch error:', error);
+                // Reset button state immediately on error
+                fetchBtn.disabled = false;
+                fetchBtn.classList.remove('loading');
+                fetchBtn.textContent = 'Fetch';
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // ===== Dynamic Reagent Table Module =====
+
+        // Add new reagent row
+        function addReagentRow(reagentName = '', mw = '', eq = '1.0') {
+            reagentCounter++;
+            const reagentId = `r${reagentCounter}`;
+            const tbody = document.getElementById('stoich-tbody');
+
+            const row = document.createElement('tr');
+            row.className = 'reagent-row';
+            row.dataset.reagentId = reagentId;
+
+            row.innerHTML = `
+                <td>
+                    <input type="text" class="reagent-name" placeholder="Reagent name" value="${reagentName}">
+                </td>
+                <td>
+                    <div class="cas-input-group">
+                        <input type="text" class="reagent-cas" placeholder="CAS No.">
+                        <button class="reagent-fetch-btn fetch-btn" aria-label="Fetch data from PubChem">Fetch</button>
+                    </div>
+                </td>
+                <td>
+                    <input type="number" class="reagent-mw" step="0.01" min="0" placeholder="MW" value="${mw}">
+                </td>
+                <td>
+                    <input type="number" class="reagent-eq" step="0.1" min="0" placeholder="Equiv." value="${eq}">
+                </td>
+                <td>
+                    <span class="reagent-mmol">-</span>
+                </td>
+                <td>
+                    <input type="number" class="reagent-mass" step="0.1" min="0" placeholder="Mass (calculated)">
+                </td>
+                <td>
+                    <button class="remove-btn" onclick="removeReagentRow('${reagentId}')">Remove</button>
+                </td>
+            `;
+
+            tbody.appendChild(row);
+
+            // Add event listeners for calculation
+            const mwInput = row.querySelector('.reagent-mw');
+            const eqInput = row.querySelector('.reagent-eq');
+            const massInput = row.querySelector('.reagent-mass');
+            const nameInput = row.querySelector('.reagent-name');
+
+            // MW or Eq change → Calculate mass (forward)
+            mwInput.addEventListener('input', () => {
+                massInput.dataset.manualOverride = '';
+                calculateReagentMass(row);
+                updateReagentInModel(reagentId, row);
+            });
+
+            eqInput.addEventListener('input', () => {
+                massInput.dataset.manualOverride = '';
+                calculateReagentMass(row);
+                updateReagentInModel(reagentId, row);
+            });
+
+            // Mass change → Calculate equivalents (reverse)
+            massInput.addEventListener('input', () => {
+                if (massInput.value) {
+                    massInput.dataset.manualOverride = 'true';
+                    calculateReagentEquivalents(row);
+                }
+                updateReagentInModel(reagentId, row);
+            });
+
+            nameInput.addEventListener('input', () => {
+                updateReagentInModel(reagentId, row);
+            });
+
+            // Fetch button listener
+            const fetchBtn = row.querySelector('.reagent-fetch-btn');
+            fetchBtn.addEventListener('click', () => {
+                handleReagentFetch(reagentId);
+            });
+
+            // Allow Enter key in CAS input
+            const casInput = row.querySelector('.reagent-cas');
+            casInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleReagentFetch(reagentId);
+                }
+            });
+
+            // Add to data model
+            addReagentToModel(reagentId, reagentName, mw, eq);
+
+            // Calculate initial values if we have SM data
+            if (reactionPlan.startingMaterial.mmol > 0) {
+                calculateReagentMass(row);
+            }
+
+            return row;
+        }
+
+        // Remove reagent row
+        function removeReagentRow(reagentId) {
+            const row = document.querySelector(`[data-reagent-id="${reagentId}"]`);
+            if (row) {
+                row.remove();
+                removeReagentFromModel(reagentId);
+            }
+        }
+
+        // Data model management for reagents
+        function addReagentToModel(id, name = '', mw = 0, eq = 1.0) {
+            reactionPlan.reagents.push({
+                id: id,
+                name: name,
+                mw: parseFloat(mw) || 0,
+                eq: parseFloat(eq) || 1.0,
+                mmol: 0,
+                mass: 0,
+                cas: ''
+            });
+        }
+
+        function removeReagentFromModel(id) {
+            const index = reactionPlan.reagents.findIndex(r => r.id === id);
+            if (index !== -1) {
+                reactionPlan.reagents.splice(index, 1);
+            }
+        }
+
+        function updateReagentInModel(id, row) {
+            const reagent = reactionPlan.reagents.find(r => r.id === id);
+            if (reagent) {
+                reagent.name = row.querySelector('.reagent-name').value;
+                reagent.mw = parseFloat(row.querySelector('.reagent-mw').value) || 0;
+                reagent.eq = parseFloat(row.querySelector('.reagent-eq').value) || 0;
+                const mmolText = row.querySelector('.reagent-mmol').textContent;
+                reagent.mmol = mmolText !== '-' ? parseFloat(mmolText) : 0;
+                reagent.mass = parseFloat(row.querySelector('.reagent-mass').value) || 0;
+                reagent.cas = row.querySelector('.reagent-cas').value || '';
+            }
+        }
+
+        // ===== Example Data Loader =====
+
+        function loadExampleData() {
+            // Load Starting Material
+            document.getElementById('sm-smiles').value = 'CC(=O)OC1=CC=CC=C1C(=O)O';
+            document.getElementById('sm-mw').value = '180.16';
+            document.getElementById('sm-mass').value = '100';
+
+            // Load Product
+            document.getElementById('product-smiles').value = 'O=C(O)c1ccccc1O';
+
+            // Load Conditions
+            document.getElementById('solvent').value = 'Water';
+            document.getElementById('temperature').value = 'rt';
+            document.getElementById('time').value = '2 h';
+            document.getElementById('notes').value = 'Aspirin hydrolysis example - demonstrates base hydrolysis followed by acidification';
+
+            // Update data model
+            updateStartingMaterialData();
+            updateProductData();
+            updateConditionsData();
+
+            // Render structures
+            drawStructure(document.getElementById('sm-smiles').value, 'sm-canvas', 'sm-error');
+            drawStructure(document.getElementById('product-smiles').value, 'product-canvas', 'product-error');
+
+            // Calculate SM mmol
+            calculateSMMmol();
+
+            // Load example reagents
+            addReagentRow('NaOH', '40.00', '2.0');
+            addReagentRow('HCl', '36.46', '2.0');
+        }
+
+        // ===== Event Handlers & Initialization =====
+
+        function initializeEventListeners() {
+            // SMILES inputs with debouncing
+            const smSmilesInput = document.getElementById('sm-smiles');
+            const productSmilesInput = document.getElementById('product-smiles');
+
+            const debouncedDrawSM = debounce(() => {
+                drawStructure(smSmilesInput.value, 'sm-canvas', 'sm-error');
+                updateStartingMaterialData();
+            }, 500);
+
+            const debouncedDrawProduct = debounce(() => {
+                drawStructure(productSmilesInput.value, 'product-canvas', 'product-error');
+                updateProductData();
+            }, 500);
+
+            smSmilesInput.addEventListener('input', debouncedDrawSM);
+            productSmilesInput.addEventListener('input', debouncedDrawProduct);
+
+            // Starting material calculations
+            document.getElementById('sm-mass').addEventListener('input', () => {
+                calculateSMMmol();
+                updateStartingMaterialData();
+            });
+
+            document.getElementById('sm-mw').addEventListener('input', () => {
+                calculateSMMmol();
+                updateStartingMaterialData();
+            });
+
+            // Starting Material PubChem fetch
+            document.getElementById('sm-fetch-btn').addEventListener('click', handleSMFetch);
+
+            // Allow Enter key in CAS input to trigger fetch
+            document.getElementById('sm-cas').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleSMFetch();
+                }
+            });
+
+            // Add reagent button
+            document.getElementById('add-reagent').addEventListener('click', () => {
+                addReagentRow();
+            });
+
+            // Conditions inputs
+            document.getElementById('solvent').addEventListener('input', updateConditionsData);
+            document.getElementById('temperature').addEventListener('input', updateConditionsData);
+            document.getElementById('time').addEventListener('input', updateConditionsData);
+            document.getElementById('notes').addEventListener('input', updateConditionsData);
+
+            // Export button
+            document.getElementById('exportBtn').addEventListener('click', () => {
+                window.print();
+            });
+        }
+
+        // DOM Content Loaded - Initialize everything
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Digital Reaction Planner initializing...');
+
+            // Initialize smiles-drawer
+            initializeSmilesDrawer();
+
+            // Set up event listeners
+            initializeEventListeners();
+
+            // Load example data
+            loadExampleData();
+
+            console.log('Digital Reaction Planner ready!');
+        });
+    </script>
+</body>
+</html>
