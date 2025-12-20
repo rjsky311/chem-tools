@@ -259,6 +259,71 @@
             color: #333;
         }
 
+        /* ===== Type-specific field visibility (Updated v1.1) ===== */
+        
+        /* General Input Sizing */
+        #stoich-table input[type="number"] {
+            min-width: 80px;
+        }
+
+        /* 1. Pure Solid: Show Mass, Purity */
+        .reagent-row[data-type="pure-solid"] .reagent-mass,
+        .reagent-row[data-type="pure-solid"] .reagent-purity { display: inline-block; }
+        
+        .reagent-row[data-type="pure-solid"] .reagent-volume,
+        .reagent-row[data-type="pure-solid"] .reagent-molarity,
+        .reagent-row[data-type="pure-solid"] .reagent-density { display: none; }
+
+        /* 2. Pure Liquid: Show Volume, Density, Purity */
+        .reagent-row[data-type="pure-liquid"] .reagent-volume,
+        .reagent-row[data-type="pure-liquid"] .reagent-density,
+        .reagent-row[data-type="pure-liquid"] .reagent-purity { display: inline-block; }
+        
+        .reagent-row[data-type="pure-liquid"] .reagent-mass,
+        .reagent-row[data-type="pure-liquid"] .reagent-molarity { display: none; }
+
+        /* 3. Solution (Molarity): Show Volume, Molarity */
+        .reagent-row[data-type="solution-molarity"] .reagent-volume,
+        .reagent-row[data-type="solution-molarity"] .reagent-molarity { display: inline-block; }
+        
+        .reagent-row[data-type="solution-molarity"] .reagent-mass,
+        .reagent-row[data-type="solution-molarity"] .reagent-density,
+        .reagent-row[data-type="solution-molarity"] .reagent-purity { display: none; }
+
+        /* 4. Solution (Wt%): Show Volume, Density, Purity */
+        .reagent-row[data-type="solution-density"] .reagent-volume,
+        .reagent-row[data-type="solution-density"] .reagent-density,
+        .reagent-row[data-type="solution-density"] .reagent-purity { display: inline-block; }
+        
+        .reagent-row[data-type="solution-density"] .reagent-mass,
+        .reagent-row[data-type="solution-density"] .reagent-molarity { display: none; }
+
+        /* N/A Placeholder Logic */
+        .field-na { display: none; color: #aaa; user-select: none; }
+        
+        /* Pure Solid needs N/A in Molarity/Density col */
+        .reagent-row[data-type="pure-solid"] td:nth-child(8) .field-na { display: inline-block; }
+        
+        /* Solution Molarity needs N/A in Purity col */
+        .reagent-row[data-type="solution-molarity"] td:nth-child(9) .field-na { display: inline-block; }
+        /* Dropdown styling */
+        .reagent-type {
+            width: 100%;
+            padding: 6px 10px;
+            font-size: 13px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-family: var(--font-family);
+            background-color: white;
+            cursor: pointer;
+        }
+
+        .reagent-type:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
         /* ===== CAS Input Group & Fetch Button ===== */
         .cas-input-group {
             display: flex;
@@ -338,6 +403,40 @@
             min-height: 80px;
         }
 
+        /* ===== Solvent Calculator Grid ===== */
+        .solvent-calculator {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .solvent-field {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .solvent-field label {
+            font-weight: 500;
+            font-size: 12px;
+            margin-bottom: 4px;
+            color: #555;
+        }
+
+        .solvent-calculator input {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-family: var(--font-family);
+            font-size: 14px;
+        }
+
+        .solvent-calculator input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        }
+
         /* ===== Responsive Design ===== */
         @media (max-width: 768px) {
             .reaction-display {
@@ -364,6 +463,11 @@
             #stoich-table th,
             #stoich-table td {
                 padding: 8px;
+            }
+
+            /* Stack solvent calculator vertically on mobile */
+            .solvent-calculator {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -472,10 +576,13 @@
                     <tr>
                         <th>Component</th>
                         <th>CAS No.</th>
+                        <th>Type</th>
                         <th>MW (g/mol)</th>
                         <th>Equivalents</th>
                         <th>Amount (mmol)</th>
-                        <th>Mass (mg)</th>
+                        <th>Mass (mg) / Volume (mL)</th>
+                        <th>Molarity (M) / Density (g/mL)</th>
+                        <th>Purity (wt%)</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -489,11 +596,14 @@
                                 <button id="sm-fetch-btn" class="fetch-btn" aria-label="Fetch data from PubChem">Fetch</button>
                             </div>
                         </td>
+                        <td>Pure</td>
                         <td><input type="number" id="sm-mw" step="0.01" min="0" placeholder="MW" aria-label="Starting Material Molecular Weight"></td>
                         <td>1.00</td>
                         <td><input type="number" id="sm-mmol" step="0.001" readonly placeholder="Calculated" aria-label="Starting Material Amount in mmol" aria-readonly="true"></td>
                         <td><input type="number" id="sm-mass" step="0.1" min="0" placeholder="Mass" aria-label="Starting Material Mass in mg"></td>
                         <td>-</td>
+                        <td>-</td>
+                        <td></td>
                     </tr>
                     <!-- Dynamic reagent rows will be added here -->
                 </tbody>
@@ -505,8 +615,21 @@
             <h2>Conditions & Notes</h2>
             <div class="conditions-grid">
                 <div class="form-group">
-                    <label for="solvent">Solvent</label>
-                    <input type="text" id="solvent" placeholder="e.g., Water, DCM">
+                    <label>Solvent Calculator</label>
+                    <div class="solvent-calculator">
+                        <div class="solvent-field">
+                            <label for="solvent-name">Solvent Name</label>
+                            <input type="text" id="solvent-name" placeholder="e.g., THF, DCM">
+                        </div>
+                        <div class="solvent-field">
+                            <label for="solvent-conc">Target Conc. (M)</label>
+                            <input type="number" id="solvent-conc" step="0.01" min="0" placeholder="0.1">
+                        </div>
+                        <div class="solvent-field">
+                            <label for="solvent-volume">Volume (mL)</label>
+                            <input type="number" id="solvent-volume" readonly placeholder="Auto-calculated">
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="temperature">Temperature</label>
@@ -556,7 +679,9 @@
             },
             reagents: [],
             conditions: {
-                solvent: '',
+                solventName: '',
+                solventConc: 0,
+                solventVolume: 0,
                 temperature: '',
                 time: '',
                 notes: ''
@@ -679,7 +804,9 @@
         }
 
         function updateConditionsData() {
-            reactionPlan.conditions.solvent = document.getElementById('solvent').value;
+            reactionPlan.conditions.solventName = document.getElementById('solvent-name').value;
+            reactionPlan.conditions.solventConc = parseFloat(document.getElementById('solvent-conc').value) || 0;
+            reactionPlan.conditions.solventVolume = parseFloat(document.getElementById('solvent-volume').value) || 0;
             reactionPlan.conditions.temperature = document.getElementById('temperature').value;
             reactionPlan.conditions.time = document.getElementById('time').value;
             reactionPlan.conditions.notes = document.getElementById('notes').value;
@@ -696,83 +823,245 @@
                 // Formula: mmol = (mass in mg / MW) * 1000
                 const mmol = (mass / mw);
                 reactionPlan.startingMaterial.mmol = mmol;
-                document.getElementById('sm-mmol').value = mmol.toFixed(3);
+                document.getElementById('sm-mmol').value = mmol.toFixed(4);
 
                 // Recalculate all reagents when SM mmol changes
                 recalculateAllReagents();
+                // Recalculate solvent volume when SM mmol changes
+                calculateSolventVolume();
             } else {
                 reactionPlan.startingMaterial.mmol = 0;
                 document.getElementById('sm-mmol').value = '';
                 recalculateAllReagents();
+                calculateSolventVolume();
             }
         }
 
-        // Calculate reagent mass from MW and equivalents (forward calculation)
-        function calculateReagentMass(reagentRow) {
+        // Calculate required solvent volume from SM mmol and target concentration
+        function calculateSolventVolume() {
             const smMmol = reactionPlan.startingMaterial.mmol;
-            const mwInput = reagentRow.querySelector('.reagent-mw');
-            const eqInput = reagentRow.querySelector('.reagent-eq');
-            const massInput = reagentRow.querySelector('.reagent-mass');
-            const mmolDisplay = reagentRow.querySelector('.reagent-mmol');
+            const targetConc = parseFloat(document.getElementById('solvent-conc').value) || 0;
+            const volumeInput = document.getElementById('solvent-volume');
 
-            const mw = parseFloat(mwInput.value) || 0;
-            const eq = parseFloat(eqInput.value) || 0;
+            if (smMmol > 0 && targetConc > 0) {
+                // Formula: Volume (mL) = mmol / Molarity (M)
+                const volume = smMmol / targetConc;
+                volumeInput.value = volume.toFixed(3);
 
-            if (smMmol > 0 && mw > 0 && eq >= 0) {
-                // Formula: reagentMmol = SM mmol * equivalents
-                const reagentMmol = smMmol * eq;
-                // Formula: mass (mg) = reagentMmol * MW
-                const mass = reagentMmol * mw;
-
-                mmolDisplay.textContent = reagentMmol.toFixed(3);
-                massInput.value = mass.toFixed(1);
-
-                return { mmol: reagentMmol, mass: mass };
+                // Update data model
+                reactionPlan.conditions.solventVolume = volume;
             } else {
-                mmolDisplay.textContent = '-';
-                if (!massInput.dataset.manualOverride) {
-                    massInput.value = '';
-                }
-                return { mmol: 0, mass: 0 };
+                volumeInput.value = '';
+                reactionPlan.conditions.solventVolume = 0;
             }
         }
 
-        // Calculate reagent equivalents from mass (reverse calculation)
-        function calculateReagentEquivalents(reagentRow) {
+        // Calculation dispatcher - routes to appropriate calculation based on reagent type
+        function calculateReagent(reagentRow, direction = 'forward') {
+            const typeSelect = reagentRow.querySelector('.reagent-type');
+            const type = typeSelect ? typeSelect.value : 'pure-solid';
+
+            if (type === 'pure-solid') {
+                return direction === 'forward' 
+                    ? calculatePureSolidMass(reagentRow) 
+                    : calculatePureSolidEquivalents(reagentRow);
+            } else if (type === 'pure-liquid') {
+                return direction === 'forward' 
+                    ? calculatePureLiquidVolume(reagentRow) 
+                    : calculatePureLiquidEquivalents(reagentRow);
+            } else if (type === 'solution-molarity') {
+                return direction === 'forward' 
+                    ? calculateMolarityVolume(reagentRow) 
+                    : calculateMolarityEquivalents(reagentRow);
+            } else if (type === 'solution-density') {
+                return direction === 'forward' 
+                    ? calculateDensityVolume(reagentRow) 
+                    : calculateDensityEquivalents(reagentRow);
+            }
+        }
+
+        // 1. Pure Solid Calculation (Mass = mmol * MW / Purity)
+        function calculatePureSolidMass(reagentRow) {
             const smMmol = reactionPlan.startingMaterial.mmol;
-            const mwInput = reagentRow.querySelector('.reagent-mw');
-            const eqInput = reagentRow.querySelector('.reagent-eq');
+            const mw = parseFloat(reagentRow.querySelector('.reagent-mw').value) || 0;
+            const eq = parseFloat(reagentRow.querySelector('.reagent-eq').value) || 0;
+            const purity = parseFloat(reagentRow.querySelector('.reagent-purity').value) || 100;
+            
             const massInput = reagentRow.querySelector('.reagent-mass');
             const mmolDisplay = reagentRow.querySelector('.reagent-mmol');
 
-            const mw = parseFloat(mwInput.value) || 0;
-            const mass = parseFloat(massInput.value) || 0;
+            if (smMmol > 0 && mw > 0 && eq >= 0 && purity > 0) {
+                const targetMmol = smMmol * eq;
+                const theoreticalMass = targetMmol * mw; 
+                const realMass = theoreticalMass / (purity / 100); 
 
-            if (smMmol > 0 && mw > 0 && mass > 0) {
-                // Formula: reagentMmol = mass / MW
-                const reagentMmol = mass / mw;
-                // Formula: equivalents = reagentMmol / SM mmol
+                mmolDisplay.textContent = targetMmol.toFixed(3);
+                massInput.value = realMass.toFixed(2); 
+
+                return { mmol: targetMmol, mass: realMass };
+            }
+            return { mmol: 0, mass: 0 };
+        }
+
+        function calculatePureSolidEquivalents(reagentRow) {
+            const smMmol = reactionPlan.startingMaterial.mmol;
+            const mw = parseFloat(reagentRow.querySelector('.reagent-mw').value) || 0;
+            const mass = parseFloat(reagentRow.querySelector('.reagent-mass').value) || 0;
+            const purity = parseFloat(reagentRow.querySelector('.reagent-purity').value) || 100;
+            
+            const eqInput = reagentRow.querySelector('.reagent-eq');
+            const mmolDisplay = reagentRow.querySelector('.reagent-mmol');
+
+            if (smMmol > 0 && mw > 0 && mass > 0 && purity > 0) {
+                const theoreticalMass = mass * (purity / 100);
+                const reagentMmol = theoreticalMass / mw;
                 const eq = reagentMmol / smMmol;
 
                 mmolDisplay.textContent = reagentMmol.toFixed(3);
                 eqInput.value = eq.toFixed(2);
-
                 return { eq: eq, mmol: reagentMmol };
-            } else {
-                // Cannot calculate
-                return null;
             }
+            return null;
         }
 
+        // 2. Pure Liquid Calculation (Volume = Mass / Density)
+        function calculatePureLiquidVolume(reagentRow) {
+            const smMmol = reactionPlan.startingMaterial.mmol;
+            const mw = parseFloat(reagentRow.querySelector('.reagent-mw').value) || 0;
+            const eq = parseFloat(reagentRow.querySelector('.reagent-eq').value) || 0;
+            const density = parseFloat(reagentRow.querySelector('.reagent-density').value) || 0;
+            const purity = parseFloat(reagentRow.querySelector('.reagent-purity').value) || 100;
+
+            const volumeInput = reagentRow.querySelector('.reagent-volume');
+            const mmolDisplay = reagentRow.querySelector('.reagent-mmol');
+
+            if (smMmol > 0 && mw > 0 && eq >= 0 && density > 0 && purity > 0) {
+                const targetMmol = smMmol * eq;
+                const theoreticalMass = targetMmol * mw; // mg
+                const realMass = theoreticalMass / (purity / 100); // mg (scaled)
+                const volume = realMass / density / 1000; // mL
+
+                mmolDisplay.textContent = targetMmol.toFixed(3);
+                volumeInput.value = volume.toFixed(3); // 3 decimal places for mL
+
+                return { mmol: targetMmol, volume: volume };
+            }
+            return { mmol: 0, volume: 0 };
+        }
+
+        function calculatePureLiquidEquivalents(reagentRow) {
+            const smMmol = reactionPlan.startingMaterial.mmol;
+            const mw = parseFloat(reagentRow.querySelector('.reagent-mw').value) || 0;
+            const density = parseFloat(reagentRow.querySelector('.reagent-density').value) || 0;
+            const purity = parseFloat(reagentRow.querySelector('.reagent-purity').value) || 100;
+            const volume = parseFloat(reagentRow.querySelector('.reagent-volume').value) || 0;
+            
+            const eqInput = reagentRow.querySelector('.reagent-eq');
+            const mmolDisplay = reagentRow.querySelector('.reagent-mmol');
+
+            if (smMmol > 0 && mw > 0 && density > 0 && volume > 0) {
+                const realMass = volume * density * 1000; // mg
+                const theoreticalMass = realMass * (purity / 100);
+                const reagentMmol = theoreticalMass / mw;
+                const eq = reagentMmol / smMmol;
+
+                mmolDisplay.textContent = reagentMmol.toFixed(3);
+                eqInput.value = eq.toFixed(2);
+                return { eq: eq, mmol: reagentMmol };
+            }
+            return null;
+        }
+
+        // 3. Solution (Molarity) Calculation
+        function calculateMolarityVolume(reagentRow) {
+            const smMmol = reactionPlan.startingMaterial.mmol;
+            const eq = parseFloat(reagentRow.querySelector('.reagent-eq').value) || 0;
+            const molarity = parseFloat(reagentRow.querySelector('.reagent-molarity').value) || 0;
+            const volumeInput = reagentRow.querySelector('.reagent-volume');
+            const mmolDisplay = reagentRow.querySelector('.reagent-mmol');
+
+            if (smMmol > 0 && molarity > 0 && eq >= 0) {
+                const reagentMmol = smMmol * eq;
+                const volume = reagentMmol / molarity; // mL
+
+                mmolDisplay.textContent = reagentMmol.toFixed(3);
+                volumeInput.value = volume.toFixed(3); // 3 decimal places
+                return { mmol: reagentMmol, volume: volume };
+            }
+            return { mmol: 0, volume: 0 };
+        }
+
+        function calculateMolarityEquivalents(reagentRow) {
+            const smMmol = reactionPlan.startingMaterial.mmol;
+            const molarity = parseFloat(reagentRow.querySelector('.reagent-molarity').value) || 0;
+            const volume = parseFloat(reagentRow.querySelector('.reagent-volume').value) || 0;
+            const eqInput = reagentRow.querySelector('.reagent-eq');
+            const mmolDisplay = reagentRow.querySelector('.reagent-mmol');
+
+            if (smMmol > 0 && molarity > 0 && volume > 0) {
+                const reagentMmol = molarity * volume;
+                const eq = reagentMmol / smMmol;
+
+                mmolDisplay.textContent = reagentMmol.toFixed(3);
+                eqInput.value = eq.toFixed(2);
+                return { eq: eq, mmol: reagentMmol };
+            }
+            return null;
+        }
+
+        // 4. Solution (Wt%/Density) Calculation - reusing Pure Liquid Logic logic but separating for clarity
+        function calculateDensityVolume(reagentRow) {
+            // Logic is identical to Pure Liquid: Mass -> Vol via Density, Purity applies to solute
+            return calculatePureLiquidVolume(reagentRow);
+        }
+
+        function calculateDensityEquivalents(reagentRow) {
+            return calculatePureLiquidEquivalents(reagentRow);
+        }
         // Recalculate all reagent rows
         function recalculateAllReagents() {
             const reagentRows = document.querySelectorAll('.reagent-row');
             reagentRows.forEach(row => {
+                const massInput = row.querySelector('.reagent-mass');
+                const volumeInput = row.querySelector('.reagent-volume');
+
                 // Only recalculate if not manually overridden
-                if (!row.querySelector('.reagent-mass').dataset.manualOverride) {
-                    calculateReagentMass(row);
+                if (!massInput.dataset.manualOverride && !volumeInput.dataset.manualOverride) {
+                    calculateReagent(row, 'forward');
                 }
             });
+        }
+
+        // Handle reagent type change
+        function handleTypeChange(reagentId, row) {
+            const typeSelect = row.querySelector('.reagent-type');
+            const type = typeSelect.value;
+
+            // Update data attribute for CSS
+            row.dataset.type = type;
+
+            // Clear manual override flags
+            row.querySelector('.reagent-mass').dataset.manualOverride = '';
+            row.querySelector('.reagent-volume').dataset.manualOverride = '';
+
+            // Clear type-specific fields when switching
+            if (type === 'pure') {
+                row.querySelector('.reagent-volume').value = '';
+                row.querySelector('.reagent-molarity').value = '';
+                row.querySelector('.reagent-density').value = '';
+                row.querySelector('.reagent-purity').value = '';
+            } else if (type === 'solution-molarity') {
+                row.querySelector('.reagent-mass').value = '';
+                row.querySelector('.reagent-density').value = '';
+                row.querySelector('.reagent-purity').value = '';
+            } else if (type === 'solution-density') {
+                row.querySelector('.reagent-mass').value = '';
+                row.querySelector('.reagent-molarity').value = '';
+            }
+
+            // Recalculate with new type
+            calculateReagent(row, 'forward');
+            updateReagentInModel(reagentId, row);
         }
 
         // ===== PubChem API Integration Module =====
@@ -931,8 +1220,10 @@
             // Trigger calculation (if SM data exists)
             if (reactionPlan.startingMaterial.mmol > 0) {
                 const massInput = row.querySelector('.reagent-mass');
+                const volumeInput = row.querySelector('.reagent-volume');
                 massInput.dataset.manualOverride = '';
-                calculateReagentMass(row);
+                volumeInput.dataset.manualOverride = '';
+                calculateReagent(row, 'forward');
             }
 
             console.log(`[Reagent ${reagentId} Populate] Population complete`);
@@ -1038,6 +1329,7 @@
             const row = document.createElement('tr');
             row.className = 'reagent-row';
             row.dataset.reagentId = reagentId;
+            row.dataset.type = 'pure';  // Default type
 
             row.innerHTML = `
                 <td>
@@ -1050,6 +1342,14 @@
                     </div>
                 </td>
                 <td>
+                    <select class="reagent-type">
+    <option value="pure-solid" selected>Pure Solid</option>
+    <option value="pure-liquid">Pure Liquid</option>
+    <option value="solution-molarity">Solution (Molarity)</option>
+    <option value="solution-density">Solution (Wt%)</option>
+</select>
+                </td>
+                <td>
                     <input type="number" class="reagent-mw" step="0.01" min="0" placeholder="MW" value="${mw}">
                 </td>
                 <td>
@@ -1059,7 +1359,17 @@
                     <span class="reagent-mmol">-</span>
                 </td>
                 <td>
-                    <input type="number" class="reagent-mass" step="0.1" min="0" placeholder="Mass (calculated)">
+                    <input type="number" class="reagent-mass" step="0.1" min="0" placeholder="Mass (mg)">
+                    <input type="number" class="reagent-volume" step="0.01" min="0" placeholder="Volume (mL)" >
+                </td>
+                <td>
+                    <input type="number" class="reagent-molarity" step="0.01" min="0" placeholder="Molarity (M)" >
+                    <input type="number" class="reagent-density" step="0.01" min="0" placeholder="Density (g/mL)" >
+                    <span class="field-na">-</span>
+                </td>
+                <td>
+                    <input type="number" class="reagent-purity" step="0.1" min="0" max="100" placeholder="Purity %" value="100">
+                    <span class="field-na">-</span>
                 </td>
                 <td>
                     <button class="remove-btn" onclick="removeReagentRow('${reagentId}')">Remove</button>
@@ -1069,21 +1379,33 @@
             tbody.appendChild(row);
 
             // Add event listeners for calculation
+            const typeSelect = row.querySelector('.reagent-type');
             const mwInput = row.querySelector('.reagent-mw');
             const eqInput = row.querySelector('.reagent-eq');
             const massInput = row.querySelector('.reagent-mass');
+            const volumeInput = row.querySelector('.reagent-volume');
+            const molarityInput = row.querySelector('.reagent-molarity');
+            const densityInput = row.querySelector('.reagent-density');
+            const purityInput = row.querySelector('.reagent-purity');
             const nameInput = row.querySelector('.reagent-name');
 
-            // MW or Eq change → Calculate mass (forward)
+            // Type dropdown listener
+            typeSelect.addEventListener('change', () => {
+                handleTypeChange(reagentId, row);
+            });
+
+            // MW or Eq change → Calculate (forward)
             mwInput.addEventListener('input', () => {
                 massInput.dataset.manualOverride = '';
-                calculateReagentMass(row);
+                volumeInput.dataset.manualOverride = '';
+                calculateReagent(row, 'forward');
                 updateReagentInModel(reagentId, row);
             });
 
             eqInput.addEventListener('input', () => {
                 massInput.dataset.manualOverride = '';
-                calculateReagentMass(row);
+                volumeInput.dataset.manualOverride = '';
+                calculateReagent(row, 'forward');
                 updateReagentInModel(reagentId, row);
             });
 
@@ -1091,8 +1413,38 @@
             massInput.addEventListener('input', () => {
                 if (massInput.value) {
                     massInput.dataset.manualOverride = 'true';
-                    calculateReagentEquivalents(row);
+                    calculateReagent(row, 'reverse');
                 }
+                updateReagentInModel(reagentId, row);
+            });
+
+            // Volume change → Calculate equivalents (reverse)
+            volumeInput.addEventListener('input', () => {
+                if (volumeInput.value) {
+                    volumeInput.dataset.manualOverride = 'true';
+                    calculateReagent(row, 'reverse');
+                }
+                updateReagentInModel(reagentId, row);
+            });
+
+            // Molarity change → Calculate volume (forward)
+            molarityInput.addEventListener('input', () => {
+                volumeInput.dataset.manualOverride = '';
+                calculateReagent(row, 'forward');
+                updateReagentInModel(reagentId, row);
+            });
+
+            // Density change → Calculate volume (forward)
+            densityInput.addEventListener('input', () => {
+                volumeInput.dataset.manualOverride = '';
+                calculateReagent(row, 'forward');
+                updateReagentInModel(reagentId, row);
+            });
+
+            // Purity change → Calculate volume (forward)
+            purityInput.addEventListener('input', () => {
+                volumeInput.dataset.manualOverride = '';
+                calculateReagent(row, 'forward');
                 updateReagentInModel(reagentId, row);
             });
 
@@ -1119,7 +1471,7 @@
 
             // Calculate initial values if we have SM data
             if (reactionPlan.startingMaterial.mmol > 0) {
-                calculateReagentMass(row);
+                calculateReagent(row, 'forward');
             }
 
             return row;
@@ -1135,14 +1487,19 @@
         }
 
         // Data model management for reagents
-        function addReagentToModel(id, name = '', mw = 0, eq = 1.0) {
+        function addReagentToModel(id, name = '', mw = 0, eq = 1.0, type = 'pure') {
             reactionPlan.reagents.push({
                 id: id,
                 name: name,
+                type: type,
                 mw: parseFloat(mw) || 0,
                 eq: parseFloat(eq) || 1.0,
                 mmol: 0,
                 mass: 0,
+                volume: 0,
+                molarity: 0,
+                density: 0,
+                purity: 0,
                 cas: ''
             });
         }
@@ -1157,13 +1514,39 @@
         function updateReagentInModel(id, row) {
             const reagent = reactionPlan.reagents.find(r => r.id === id);
             if (reagent) {
+                const typeSelect = row.querySelector('.reagent-type');
+
+                // Common fields
                 reagent.name = row.querySelector('.reagent-name').value;
+                reagent.type = typeSelect ? typeSelect.value : 'pure';
                 reagent.mw = parseFloat(row.querySelector('.reagent-mw').value) || 0;
                 reagent.eq = parseFloat(row.querySelector('.reagent-eq').value) || 0;
+
                 const mmolText = row.querySelector('.reagent-mmol').textContent;
                 reagent.mmol = mmolText !== '-' ? parseFloat(mmolText) : 0;
-                reagent.mass = parseFloat(row.querySelector('.reagent-mass').value) || 0;
+
                 reagent.cas = row.querySelector('.reagent-cas').value || '';
+
+                // Type-specific fields
+                if (reagent.type === 'pure') {
+                    reagent.mass = parseFloat(row.querySelector('.reagent-mass').value) || 0;
+                    reagent.volume = 0;
+                    reagent.molarity = 0;
+                    reagent.density = 0;
+                    reagent.purity = 0;
+                } else if (reagent.type === 'solution-molarity') {
+                    reagent.volume = parseFloat(row.querySelector('.reagent-volume').value) || 0;
+                    reagent.molarity = parseFloat(row.querySelector('.reagent-molarity').value) || 0;
+                    reagent.mass = 0;
+                    reagent.density = 0;
+                    reagent.purity = 0;
+                } else if (reagent.type === 'solution-density') {
+                    reagent.volume = parseFloat(row.querySelector('.reagent-volume').value) || 0;
+                    reagent.density = parseFloat(row.querySelector('.reagent-density').value) || 0;
+                    reagent.purity = parseFloat(row.querySelector('.reagent-purity').value) || 0;
+                    reagent.mass = 0;
+                    reagent.molarity = 0;
+                }
             }
         }
 
@@ -1179,7 +1562,9 @@
             document.getElementById('product-smiles').value = 'O=C(O)c1ccccc1O';
 
             // Load Conditions
-            document.getElementById('solvent').value = 'Water';
+            document.getElementById('solvent-name').value = 'THF';
+            document.getElementById('solvent-conc').value = '0.1';
+            // Volume will auto-calculate
             document.getElementById('temperature').value = 'rt';
             document.getElementById('time').value = '2 h';
             document.getElementById('notes').value = 'Aspirin hydrolysis example - demonstrates base hydrolysis followed by acidification';
@@ -1248,7 +1633,11 @@
             });
 
             // Conditions inputs
-            document.getElementById('solvent').addEventListener('input', updateConditionsData);
+            document.getElementById('solvent-name').addEventListener('input', updateConditionsData);
+            document.getElementById('solvent-conc').addEventListener('input', () => {
+                calculateSolventVolume();
+                updateConditionsData();
+            });
             document.getElementById('temperature').addEventListener('input', updateConditionsData);
             document.getElementById('time').addEventListener('input', updateConditionsData);
             document.getElementById('notes').addEventListener('input', updateConditionsData);
