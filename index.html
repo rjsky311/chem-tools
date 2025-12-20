@@ -816,6 +816,160 @@
             reactionPlan.conditions.notes = document.getElementById('notes').value;
         }
 
+        // ===== LocalStorage Persistence Module =====
+
+        /**
+         * Save all current form data to localStorage
+         */
+        function saveToLocalStorage() {
+            try {
+                // Collect Starting Material data
+                const startingMaterial = {
+                    cas: document.getElementById('sm-cas').value || '',
+                    mw: document.getElementById('sm-mw').value || '',
+                    mass: document.getElementById('sm-mass').value || '',
+                    smiles: document.getElementById('sm-smiles').value || ''
+                };
+
+                // Collect all reagent rows
+                const reagents = [];
+                const reagentRows = document.querySelectorAll('.reagent-row');
+                reagentRows.forEach(row => {
+                    const reagentData = {
+                        id: row.dataset.reagentId,
+                        name: row.querySelector('.reagent-name').value || '',
+                        cas: row.querySelector('.reagent-cas').value || '',
+                        type: row.querySelector('.reagent-type').value || 'pure-solid',
+                        mw: row.querySelector('.reagent-mw').value || '',
+                        eq: row.querySelector('.reagent-eq').value || '1.0',
+                        mass: row.querySelector('.reagent-mass').value || '',
+                        volume: row.querySelector('.reagent-volume').value || '',
+                        molarity: row.querySelector('.reagent-molarity').value || '',
+                        density: row.querySelector('.reagent-density').value || '',
+                        purity: row.querySelector('.reagent-purity').value || ''
+                    };
+                    reagents.push(reagentData);
+                });
+
+                // Collect Conditions data
+                const conditions = {
+                    solventName: document.getElementById('solvent-name').value || '',
+                    solventConc: document.getElementById('solvent-conc').value || '',
+                    temperature: document.getElementById('temperature').value || '',
+                    time: document.getElementById('time').value || '',
+                    notes: document.getElementById('notes').value || ''
+                };
+
+                // Collect Product data
+                const product = {
+                    smiles: document.getElementById('product-smiles').value || ''
+                };
+
+                // Package all data
+                const dataToSave = {
+                    startingMaterial,
+                    reagents,
+                    conditions,
+                    product,
+                    reagentCounter  // Save the counter to maintain unique IDs
+                };
+
+                // Save to localStorage
+                localStorage.setItem('reactionPlanData', JSON.stringify(dataToSave));
+                console.log('[Auto-Save] Data saved to localStorage');
+            } catch (error) {
+                console.error('[Auto-Save] Error saving to localStorage:', error);
+            }
+        }
+
+        /**
+         * Load saved data from localStorage and populate form
+         * @returns {boolean} - True if data was loaded, false otherwise
+         */
+        function loadFromLocalStorage() {
+            try {
+                const savedData = localStorage.getItem('reactionPlanData');
+
+                if (!savedData) {
+                    console.log('[Auto-Restore] No saved data found');
+                    return false;
+                }
+
+                const data = JSON.parse(savedData);
+                console.log('[Auto-Restore] Loading saved data:', data);
+
+                // Restore Starting Material
+                if (data.startingMaterial) {
+                    document.getElementById('sm-cas').value = data.startingMaterial.cas || '';
+                    document.getElementById('sm-mw').value = data.startingMaterial.mw || '';
+                    document.getElementById('sm-mass').value = data.startingMaterial.mass || '';
+                    document.getElementById('sm-smiles').value = data.startingMaterial.smiles || '';
+                }
+
+                // Restore reagentCounter to maintain unique IDs
+                if (data.reagentCounter !== undefined) {
+                    reagentCounter = data.reagentCounter;
+                }
+
+                // Restore Reagents (create rows dynamically)
+                if (data.reagents && data.reagents.length > 0) {
+                    data.reagents.forEach(reagentData => {
+                        // Create new reagent row with basic data
+                        const row = addReagentRow(reagentData.name, reagentData.mw, reagentData.eq);
+
+                        // Populate all fields
+                        row.querySelector('.reagent-cas').value = reagentData.cas || '';
+                        row.querySelector('.reagent-type').value = reagentData.type || 'pure-solid';
+                        row.querySelector('.reagent-mw').value = reagentData.mw || '';
+                        row.querySelector('.reagent-eq').value = reagentData.eq || '1.0';
+                        row.querySelector('.reagent-mass').value = reagentData.mass || '';
+                        row.querySelector('.reagent-volume').value = reagentData.volume || '';
+                        row.querySelector('.reagent-molarity').value = reagentData.molarity || '';
+                        row.querySelector('.reagent-density').value = reagentData.density || '';
+                        row.querySelector('.reagent-purity').value = reagentData.purity || '';
+
+                        // Update row's data-type attribute for CSS visibility
+                        row.dataset.type = reagentData.type || 'pure-solid';
+
+                        // Update the reagent ID to match saved ID (maintain consistency)
+                        row.dataset.reagentId = reagentData.id;
+
+                        // Update data model
+                        const reagentId = reagentData.id;
+                        updateReagentInModel(reagentId, row);
+                    });
+                }
+
+                // Restore Conditions
+                if (data.conditions) {
+                    document.getElementById('solvent-name').value = data.conditions.solventName || '';
+                    document.getElementById('solvent-conc').value = data.conditions.solventConc || '';
+                    document.getElementById('temperature').value = data.conditions.temperature || '';
+                    document.getElementById('time').value = data.conditions.time || '';
+                    document.getElementById('notes').value = data.conditions.notes || '';
+                }
+
+                // Restore Product
+                if (data.product) {
+                    document.getElementById('product-smiles').value = data.product.smiles || '';
+                }
+
+                // Update all data models
+                updateStartingMaterialData();
+                updateProductData();
+                updateConditionsData();
+
+                // Trigger calculations after restoration
+                calculateSMMmol();  // This will cascade to reagents and solvent volume
+
+                console.log('[Auto-Restore] Data restoration complete');
+                return true;
+            } catch (error) {
+                console.error('[Auto-Restore] Error loading from localStorage:', error);
+                return false;
+            }
+        }
+
         // ===== Stoichiometry Calculation Module =====
 
         // Calculate SM mmol from mass and MW
@@ -1253,6 +1407,7 @@
 
                 console.log('[SM Fetch] Calling populateStartingMaterialFromPubChem...');
                 populateStartingMaterialFromPubChem(data);
+                saveToLocalStorage();
 
                 // Success feedback
                 fetchBtn.textContent = 'Fetched!';
@@ -1310,10 +1465,11 @@
                     // 填入數據
                     mwInput.value = props.MolecularWeight;
                     nameInput.value = props.IUPACName;
-                    
+
                     // 觸發重新計算
                     calculateReagent(row, 'forward');
                     updateReagentInModel(row.dataset.id, row);
+                    saveToLocalStorage();
                 } else {
                     throw new Error('No data found for this CAS');
                 }
@@ -1403,10 +1559,12 @@
             const densityInput = row.querySelector('.reagent-density');
             const purityInput = row.querySelector('.reagent-purity');
             const nameInput = row.querySelector('.reagent-name');
+            const casInput = row.querySelector('.reagent-cas');
 
             // Type dropdown listener
             typeSelect.addEventListener('change', () => {
                 handleTypeChange(reagentId, row);
+                saveToLocalStorage();
             });
 
             // MW or Eq change → Calculate (forward)
@@ -1415,6 +1573,7 @@
                 volumeInput.dataset.manualOverride = '';
                 calculateReagent(row, 'forward');
                 updateReagentInModel(reagentId, row);
+                saveToLocalStorage();
             });
 
             eqInput.addEventListener('input', () => {
@@ -1422,6 +1581,7 @@
                 volumeInput.dataset.manualOverride = '';
                 calculateReagent(row, 'forward');
                 updateReagentInModel(reagentId, row);
+                saveToLocalStorage();
             });
 
             // Mass change → Calculate equivalents (reverse)
@@ -1431,6 +1591,7 @@
                     calculateReagent(row, 'reverse');
                 }
                 updateReagentInModel(reagentId, row);
+                saveToLocalStorage();
             });
 
             // Volume change → Calculate equivalents (reverse)
@@ -1440,6 +1601,7 @@
                     calculateReagent(row, 'reverse');
                 }
                 updateReagentInModel(reagentId, row);
+                saveToLocalStorage();
             });
 
             // Molarity change → Calculate volume (forward)
@@ -1447,6 +1609,7 @@
                 volumeInput.dataset.manualOverride = '';
                 calculateReagent(row, 'forward');
                 updateReagentInModel(reagentId, row);
+                saveToLocalStorage();
             });
 
             // Density change → Calculate volume (forward)
@@ -1454,6 +1617,7 @@
                 volumeInput.dataset.manualOverride = '';
                 calculateReagent(row, 'forward');
                 updateReagentInModel(reagentId, row);
+                saveToLocalStorage();
             });
 
             // Purity change → Calculate volume (forward)
@@ -1461,10 +1625,18 @@
                 volumeInput.dataset.manualOverride = '';
                 calculateReagent(row, 'forward');
                 updateReagentInModel(reagentId, row);
+                saveToLocalStorage();
             });
 
             nameInput.addEventListener('input', () => {
                 updateReagentInModel(reagentId, row);
+                saveToLocalStorage();
+            });
+
+            // CAS input listener
+            casInput.addEventListener('input', () => {
+                updateReagentInModel(reagentId, row);
+                saveToLocalStorage();
             });
 
             // Fetch button listener
@@ -1474,7 +1646,6 @@
             });
 
             // Allow Enter key in CAS input
-            const casInput = row.querySelector('.reagent-cas');
             casInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     handleReagentFetch(reagentId);
@@ -1498,6 +1669,7 @@
             if (row) {
                 row.remove();
                 removeReagentFromModel(reagentId);
+                saveToLocalStorage();
             }
         }
 
@@ -1611,11 +1783,13 @@
             const debouncedDrawSM = debounce(() => {
                 drawStructure(smSmilesInput.value, 'sm-canvas', 'sm-error');
                 updateStartingMaterialData();
+                saveToLocalStorage();
             }, 500);
 
             const debouncedDrawProduct = debounce(() => {
                 drawStructure(productSmilesInput.value, 'product-canvas', 'product-error');
                 updateProductData();
+                saveToLocalStorage();
             }, 500);
 
             smSmilesInput.addEventListener('input', debouncedDrawSM);
@@ -1625,11 +1799,18 @@
             document.getElementById('sm-mass').addEventListener('input', () => {
                 calculateSMMmol();
                 updateStartingMaterialData();
+                saveToLocalStorage();
             });
 
             document.getElementById('sm-mw').addEventListener('input', () => {
                 calculateSMMmol();
                 updateStartingMaterialData();
+                saveToLocalStorage();
+            });
+
+            document.getElementById('sm-cas').addEventListener('input', () => {
+                updateStartingMaterialData();
+                saveToLocalStorage();
             });
 
             // Starting Material PubChem fetch
@@ -1645,17 +1826,31 @@
             // Add reagent button
             document.getElementById('add-reagent').addEventListener('click', () => {
                 addReagentRow();
+                saveToLocalStorage();
             });
 
             // Conditions inputs
-            document.getElementById('solvent-name').addEventListener('input', updateConditionsData);
+            document.getElementById('solvent-name').addEventListener('input', () => {
+                updateConditionsData();
+                saveToLocalStorage();
+            });
             document.getElementById('solvent-conc').addEventListener('input', () => {
                 calculateSolventVolume();
                 updateConditionsData();
+                saveToLocalStorage();
             });
-            document.getElementById('temperature').addEventListener('input', updateConditionsData);
-            document.getElementById('time').addEventListener('input', updateConditionsData);
-            document.getElementById('notes').addEventListener('input', updateConditionsData);
+            document.getElementById('temperature').addEventListener('input', () => {
+                updateConditionsData();
+                saveToLocalStorage();
+            });
+            document.getElementById('time').addEventListener('input', () => {
+                updateConditionsData();
+                saveToLocalStorage();
+            });
+            document.getElementById('notes').addEventListener('input', () => {
+                updateConditionsData();
+                saveToLocalStorage();
+            });
 
             // Export button
             document.getElementById('exportBtn').addEventListener('click', () => {
@@ -1673,8 +1868,13 @@
             // Set up event listeners
             initializeEventListeners();
 
-            // Load example data
-            loadExampleData();
+            // Try to load saved data first, fallback to example data
+            const dataLoaded = loadFromLocalStorage();
+
+            if (!dataLoaded) {
+                // Only load example data if no saved data exists
+                loadExampleData();
+            }
 
             console.log('Digital Reaction Planner ready!');
         });
