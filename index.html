@@ -306,6 +306,10 @@
         
         /* Solution Molarity needs N/A in Purity col */
         .reagent-row[data-type="solution-molarity"] td:nth-child(9) .field-na { display: inline-block; }
+
+        /* Hide N/A placeholder in Molarity/Density column when molarity input is active */
+        .reagent-row[data-type="solution-molarity"] td:nth-child(8) .field-na { display: none; }
+
         /* Dropdown styling */
         .reagent-type {
             width: 100%;
@@ -1044,20 +1048,13 @@
             row.querySelector('.reagent-mass').dataset.manualOverride = '';
             row.querySelector('.reagent-volume').dataset.manualOverride = '';
 
-            // Clear type-specific fields when switching
-            if (type === 'pure') {
-                row.querySelector('.reagent-volume').value = '';
-                row.querySelector('.reagent-molarity').value = '';
-                row.querySelector('.reagent-density').value = '';
-                row.querySelector('.reagent-purity').value = '';
-            } else if (type === 'solution-molarity') {
-                row.querySelector('.reagent-mass').value = '';
-                row.querySelector('.reagent-density').value = '';
-                row.querySelector('.reagent-purity').value = '';
-            } else if (type === 'solution-density') {
-                row.querySelector('.reagent-mass').value = '';
-                row.querySelector('.reagent-molarity').value = '';
-            }
+            // IMPORTANT: Clear ALL type-specific fields unconditionally when switching
+            // This prevents data residue from previous type selections
+            row.querySelector('.reagent-mass').value = '';
+            row.querySelector('.reagent-volume').value = '';
+            row.querySelector('.reagent-molarity').value = '';
+            row.querySelector('.reagent-density').value = '';
+            row.querySelector('.reagent-purity').value = '';
 
             // Recalculate with new type
             calculateReagent(row, 'forward');
@@ -1258,8 +1255,6 @@
                 populateStartingMaterialFromPubChem(data);
 
                 // Success feedback
-                fetchBtn.disabled = false;
-                fetchBtn.classList.remove('loading');
                 fetchBtn.textContent = 'Fetched!';
                 console.log('[SM Fetch] Fetch successful!');
                 setTimeout(() => {
@@ -1267,11 +1262,11 @@
                 }, 1500);
             } catch (error) {
                 console.error('[SM Fetch] Error occurred:', error);
-                // Reset button state immediately on error
+                alert(`Error: ${error.message}`);
+            } finally {
+                // ALWAYS reset button state (success or failure)
                 fetchBtn.disabled = false;
                 fetchBtn.classList.remove('loading');
-                fetchBtn.textContent = 'Fetch';
-                alert(`Error: ${error.message}`);
             }
         }
 
@@ -1279,12 +1274,14 @@
          * Handle Reagent Fetch button click
          * @param {string} reagentId - Reagent ID (e.g., 'r1')
          */
-        async function handleReagentFetch(reagentId) {
-            const row = document.querySelector(`[data-reagent-id="${reagentId}"]`);
-            if (!row) return;
-
-            const casInput = row.querySelector('.reagent-cas');
+        async function handleReagentFetch(row) {
+            // 1. 變數定義在最上面，確保終於區塊(finally)一定抓得到按鈕
             const fetchBtn = row.querySelector('.reagent-fetch-btn');
+            const casInput = row.querySelector('.reagent-cas');
+            const nameInput = row.querySelector('.reagent-name');
+            const mwInput = row.querySelector('.reagent-mw');
+            
+            // 取得輸入的 CAS
             const cas = casInput.value.trim();
 
             if (!cas) {
@@ -1292,29 +1289,47 @@
                 return;
             }
 
-            // Set loading state
-            fetchBtn.disabled = true;
-            fetchBtn.textContent = 'Loading...';
-            fetchBtn.classList.add('loading');
-
             try {
-                const data = await fetchPubChemData(cas);
-                populateReagentFromPubChem(data, row, reagentId);
+                // 2. 鎖定按鈕，變更文字為 Loading...
+                fetchBtn.disabled = true;
+                fetchBtn.textContent = 'Loading...';
+                fetchBtn.classList.add('loading');
 
-                // Success feedback
-                fetchBtn.disabled = false;
-                fetchBtn.classList.remove('loading');
-                fetchBtn.textContent = 'Fetched!';
-                setTimeout(() => {
-                    fetchBtn.textContent = 'Fetch';
-                }, 1500);
+                // 3. 呼叫 PubChem API
+                const response = await fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${cas}/property/MolecularWeight,IUPACName/JSON`);
+                
+                if (!response.ok) {
+                    throw new Error('CAS not found in PubChem database');
+                }
+
+                const data = await response.json();
+                
+                if (data.PropertyTable && data.PropertyTable.Properties.length > 0) {
+                    const props = data.PropertyTable.Properties[0];
+                    
+                    // 填入數據
+                    mwInput.value = props.MolecularWeight;
+                    nameInput.value = props.IUPACName;
+                    
+                    // 觸發重新計算
+                    calculateReagent(row, 'forward');
+                    updateReagentInModel(row.dataset.id, row);
+                } else {
+                    throw new Error('No data found for this CAS');
+                }
+
             } catch (error) {
                 console.error('Fetch error:', error);
-                // Reset button state immediately on error
-                fetchBtn.disabled = false;
-                fetchBtn.classList.remove('loading');
-                fetchBtn.textContent = 'Fetch';
-                alert(`Error: ${error.message}`);
+                // 這裡會跳出 Alert，測試腳本會抓到這個
+                alert(error.message);
+            } finally {
+                // 4. 【關鍵修復】無論成功還是失敗，這裡一定會執行！
+                // 強制把按鈕變回原狀
+                if (fetchBtn) {
+                    fetchBtn.disabled = false;
+                    fetchBtn.textContent = 'Fetch';
+                    fetchBtn.classList.remove('loading');
+                }
             }
         }
 
