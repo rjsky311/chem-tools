@@ -538,6 +538,19 @@
                 font-size: 18px;
             }
         }
+
+        /* Structure Visualization v1.3 */
+        .warning-box {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 4px;
+            font-size: 14px;
+            text-align: center;
+        }
+        .force-visible { display: block !important; }
+        .force-hidden { display: none !important; }
     </style>
 </head>
 <body>
@@ -554,8 +567,11 @@
                 <div class="molecule-container">
                     <label for="sm-smiles">Starting Material SMILES</label>
                     <input type="text" id="sm-smiles" class="smiles-input" placeholder="Enter SMILES notation">
-                    <canvas id="sm-canvas" width="300" height="250"></canvas>
+                    <canvas id="sm-canvas" width="600" height="500" role="img" aria-label="Starting material molecular structure"></canvas>
                     <span class="error-message" id="sm-error"></span>
+                    <div id="sm-stereo-warning" class="warning-box" style="display: none;">
+                        ⚠️ Stereochemistry may not be accurately represented.
+                    </div>
                 </div>
                 <div class="arrow-container">
                     →
@@ -563,8 +579,11 @@
                 <div class="molecule-container">
                     <label for="product-smiles">Product SMILES</label>
                     <input type="text" id="product-smiles" class="smiles-input" placeholder="Enter SMILES notation">
-                    <canvas id="product-canvas" width="300" height="250"></canvas>
+                    <canvas id="product-canvas" width="600" height="500" role="img" aria-label="Product molecular structure"></canvas>
                     <span class="error-message" id="product-error"></span>
+                    <div id="product-stereo-warning" class="warning-box" style="display: none;">
+                        ⚠️ Stereochemistry may not be accurately represented.
+                    </div>
                 </div>
             </div>
         </section>
@@ -652,7 +671,7 @@
     </div>
 
     <!-- External Library -->
-    <script src="https://unpkg.com/smiles-drawer@2.0.1/dist/smiles-drawer.min.js"></script>
+    <script src="https://unpkg.com/smiles-drawer@1.2.0/dist/smiles-drawer.min.js"></script>
 
     <script>
         /**
@@ -715,8 +734,8 @@
         // Initialize SmilesDrawer with academic configuration
         function initializeSmilesDrawer() {
             drawer = new SmilesDrawer.Drawer({
-                width: 300,
-                height: 250,
+                width: 600,
+                height: 500,
                 bondThickness: 1.5,
                 bondLength: 25,
                 shortBondLength: 0.8,
@@ -760,37 +779,60 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
-        // Draw structure from SMILES
+        // Draw structure from SMILES (v1.3 with stereo detection)
         function drawStructure(smiles, canvasId, errorElementId) {
             const canvas = document.getElementById(canvasId);
             const errorElement = document.getElementById(errorElementId);
 
-            if (!smiles || smiles.trim() === '') {
+            // Get warning box element
+            const warningId = canvasId.replace('-canvas', '-stereo-warning');
+            const warningBox = document.getElementById(warningId);
+
+            // Clean input and detect stereochemistry
+            const cleanSmiles = smiles ? smiles.trim() : '';
+            const hasStereo = cleanSmiles.includes('@');
+
+            // Handle stereochemistry warning
+            if (warningBox) {
+                if (hasStereo) {
+                    warningBox.classList.add('force-visible');
+                    warningBox.classList.remove('force-hidden');
+                    warningBox.style.display = 'block';
+                } else {
+                    warningBox.classList.add('force-hidden');
+                    warningBox.classList.remove('force-visible');
+                    warningBox.style.display = 'none';
+                }
+            }
+
+            if (!cleanSmiles) {
                 clearCanvas(canvasId);
                 canvas.classList.remove('error');
-                errorElement.textContent = '';
+                if (errorElement) errorElement.textContent = '';
+                canvas.setAttribute('aria-label', 'Empty chemical structure canvas');
                 return;
             }
 
             try {
-                SmilesDrawer.parse(smiles, function(tree) {
+                SmilesDrawer.parse(cleanSmiles, function(tree) {
                     // Success - draw structure
                     clearCanvas(canvasId);
                     drawer.draw(tree, canvas, 'dark', false);
                     canvas.classList.remove('error');
-                    errorElement.textContent = '';
+                    if (errorElement) errorElement.textContent = '';
+                    canvas.setAttribute('aria-label', `molecular structure: ${cleanSmiles}`);
                 }, function(err) {
                     // Error - show feedback
                     console.error('SMILES parsing error:', err);
                     clearCanvas(canvasId);
                     canvas.classList.add('error');
-                    errorElement.textContent = 'Invalid SMILES notation';
+                    if (errorElement) errorElement.textContent = 'Invalid SMILES notation';
                 });
             } catch (error) {
                 console.error('Drawing error:', error);
                 clearCanvas(canvasId);
                 canvas.classList.add('error');
-                errorElement.textContent = 'Error rendering structure';
+                if (errorElement) errorElement.textContent = 'Error rendering structure';
             }
         }
 
@@ -1468,7 +1510,7 @@
 
                     // 觸發重新計算
                     calculateReagent(row, 'forward');
-                    updateReagentInModel(row.dataset.id, row);
+                    updateReagentInModel(row.dataset.reagentId, row);
                     saveToLocalStorage();
                 } else {
                     throw new Error('No data found for this CAS');
@@ -1642,13 +1684,13 @@
             // Fetch button listener
             const fetchBtn = row.querySelector('.reagent-fetch-btn');
             fetchBtn.addEventListener('click', () => {
-                handleReagentFetch(reagentId);
+                handleReagentFetch(row);
             });
 
             // Allow Enter key in CAS input
             casInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
-                    handleReagentFetch(reagentId);
+                    handleReagentFetch(row);
                 }
             });
 
@@ -1794,6 +1836,18 @@
 
             smSmilesInput.addEventListener('input', debouncedDrawSM);
             productSmilesInput.addEventListener('input', debouncedDrawProduct);
+
+            // Also trigger on blur for immediate feedback
+            smSmilesInput.addEventListener('blur', () => {
+                drawStructure(smSmilesInput.value, 'sm-canvas', 'sm-error');
+                updateStartingMaterialData();
+                saveToLocalStorage();
+            });
+            productSmilesInput.addEventListener('blur', () => {
+                drawStructure(productSmilesInput.value, 'product-canvas', 'product-error');
+                updateProductData();
+                saveToLocalStorage();
+            });
 
             // Starting material calculations
             document.getElementById('sm-mass').addEventListener('input', () => {
