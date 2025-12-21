@@ -1,6 +1,6 @@
 {
   "name": "chem-tools",
-  "version": "1.0.0",
+  "version": "1.3.0",
   "description": "My digital reaction planner tools",
   "main": "index.js",
   "scripts": {
