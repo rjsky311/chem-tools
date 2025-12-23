@@ -167,7 +167,7 @@ test.describe('Structure Visualization', () => {
         // Reload page
         // 注意：這裡不需要清空 LocalStorage，因為我們要測試的就是「存檔功能」
         await page.reload();
-        await page.waitForSelector('#stoich-table');
+        await page.waitForSelector('#reaction-scheme-section');
         await page.waitForTimeout(500);
 
         // Verify SMILES persists

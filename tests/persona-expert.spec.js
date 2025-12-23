@@ -14,7 +14,7 @@ test.describe('Persona: Expert Chemist - Robustness Testing', () => {
         await page.goto(fileUrl);
 
         // Wait for page to be fully loaded
-        await page.waitForSelector('#stoich-table');
+        await page.waitForSelector('#reaction-scheme-section');
         await page.waitForSelector('#add-reagent');
     });
 
@@ -211,7 +211,7 @@ test.describe('Persona: Expert Chemist - Robustness Testing', () => {
         await page.waitForTimeout(2000);
 
         // Page should still be functional
-        const tableVisible = await page.locator('#stoich-table').isVisible();
+        const tableVisible = await page.locator('#reaction-scheme-section').isVisible();
         expect(tableVisible).toBe(true);
     });
 

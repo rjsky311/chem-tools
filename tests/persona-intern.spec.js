@@ -14,7 +14,7 @@ test.describe('Persona: Intern - Error Handling & Fool-Proof Mechanisms', () => 
         await page.goto(fileUrl);
 
         // Wait for page to be fully loaded
-        await page.waitForSelector('#stoich-table');
+        await page.waitForSelector('#reaction-scheme-section');
         await page.waitForSelector('#add-reagent');
     });
 

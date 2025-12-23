@@ -583,6 +583,211 @@
         }
         .force-visible { display: block !important; }
         .force-hidden { display: none !important; }
+
+        /* ===== v2.0 Reaction Scheme Card Layout ===== */
+        .reaction-scheme-container {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            overflow-x: auto;
+            padding: 20px 10px;
+            min-height: 400px;
+        }
+
+        .compound-card {
+            flex: 0 0 220px;
+            min-width: 220px;
+            max-width: 220px;
+            background: var(--background);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .compound-card.sm-card {
+            background: var(--limiting-reagent-bg);
+            border-color: #b8d4e8;
+        }
+
+        .compound-card .card-header {
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+            text-align: center;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .compound-card .card-header input.reagent-name {
+            flex: 1;
+            font-weight: 600;
+            border: none;
+            background: transparent;
+            text-align: center;
+            font-size: 14px;
+            padding: 0;
+        }
+
+        .compound-card .card-header input.reagent-name:focus {
+            outline: none;
+            border-bottom: 1px solid var(--primary-color);
+        }
+
+        .compound-canvas {
+            width: 100%;
+            height: 150px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: white;
+        }
+
+        .card-field {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .card-field label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #666;
+        }
+
+        .card-field input,
+        .card-field select {
+            padding: 8px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 13px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .card-field .fixed-value {
+            padding: 8px 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .card-field .reagent-mmol {
+            padding: 8px 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .reagent-card .remove-btn {
+            padding: 4px 8px;
+            font-size: 12px;
+            background: var(--error-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            min-width: auto;
+        }
+
+        .reagent-card .remove-btn:hover {
+            background: #c82333;
+        }
+
+        .scheme-arrow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            font-weight: bold;
+            color: #666;
+            min-width: 40px;
+            align-self: center;
+        }
+
+        .reagent-cards-container {
+            display: flex;
+            gap: 15px;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding: 5px;
+        }
+
+        .scheme-controls {
+            margin-bottom: 15px;
+        }
+
+        /* Card-based Type-specific field visibility */
+        .reagent-row .reagent-mass-field,
+        .reagent-row .reagent-volume-field,
+        .reagent-row .reagent-molarity-field,
+        .reagent-row .reagent-density-field,
+        .reagent-row .reagent-purity-field { display: none; }
+
+        .reagent-row[data-type="pure-solid"] .reagent-mass-field,
+        .reagent-row[data-type="pure-solid"] .reagent-purity-field { display: flex; }
+
+        .reagent-row[data-type="pure-liquid"] .reagent-volume-field,
+        .reagent-row[data-type="pure-liquid"] .reagent-density-field,
+        .reagent-row[data-type="pure-liquid"] .reagent-purity-field { display: flex; }
+
+        .reagent-row[data-type="solution-molarity"] .reagent-volume-field,
+        .reagent-row[data-type="solution-molarity"] .reagent-molarity-field { display: flex; }
+
+        .reagent-row[data-type="solution-density"] .reagent-volume-field,
+        .reagent-row[data-type="solution-density"] .reagent-density-field,
+        .reagent-row[data-type="solution-density"] .reagent-purity-field { display: flex; }
+
+        /* Responsive design for card layout */
+        @media (max-width: 768px) {
+            .reaction-scheme-container {
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .scheme-arrow {
+                transform: rotate(90deg);
+            }
+
+            .compound-card {
+                flex: 0 0 280px;
+                min-width: 280px;
+                max-width: 280px;
+            }
+
+            .reagent-cards-container {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        /* Print styles for card layout */
+        @media print {
+            .reaction-scheme-container {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .compound-card {
+                page-break-inside: avoid;
+                box-shadow: none;
+                border: 1px solid #ccc;
+            }
+
+            .reagent-card .remove-btn,
+            .scheme-controls,
+            .fetch-btn {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -595,83 +800,80 @@
             </div>
         </header>
 
-        <!-- Reaction Scheme Section -->
-        <section id="reaction-scheme" class="card">
+        <!-- v2.0 Reaction Scheme Section (Card Layout) -->
+        <section id="reaction-scheme-section" class="card">
             <h2>Reaction Scheme</h2>
-            <div class="reaction-display">
-                <div class="molecule-container">
-                    <label for="sm-smiles">Starting Material SMILES</label>
-                    <input type="text" id="sm-smiles" class="smiles-input" placeholder="Enter SMILES notation">
-                    <canvas id="sm-canvas" width="600" height="500" role="img" aria-label="Starting material molecular structure"></canvas>
+            <div class="scheme-controls">
+                <button id="add-reagent" aria-label="Add new reagent">+ Add Reagent</button>
+            </div>
+            <div class="reaction-scheme-container">
+                <!-- Starting Material Card -->
+                <div class="compound-card sm-card" id="sm-card">
+                    <div class="card-header">Starting Material</div>
+                    <canvas id="sm-canvas" class="compound-canvas" width="300" height="250" role="img" aria-label="Starting material molecular structure"></canvas>
+                    <div class="card-field">
+                        <label for="sm-smiles">SMILES</label>
+                        <input type="text" id="sm-smiles" class="smiles-input" placeholder="SMILES notation">
+                    </div>
                     <span class="error-message" id="sm-error"></span>
                     <div id="sm-stereo-warning" class="warning-box" style="display: none;">
-                        ⚠️ Stereochemistry may not be accurately represented.
+                        ⚠️ Stereochemistry warning
+                    </div>
+                    <div class="card-field">
+                        <label for="sm-cas">CAS No.</label>
+                        <div class="cas-input-group">
+                            <input type="text" id="sm-cas" placeholder="CAS No." class="cas-input" aria-label="Starting Material CAS Number">
+                            <button id="sm-fetch-btn" class="fetch-btn" aria-label="Fetch data from PubChem">Fetch</button>
+                        </div>
+                    </div>
+                    <div class="card-field">
+                        <label for="sm-mw">MW (g/mol)</label>
+                        <input type="number" id="sm-mw" step="0.01" min="0" placeholder="MW" aria-label="Starting Material Molecular Weight">
+                    </div>
+                    <div class="card-field">
+                        <label>Equivalents</label>
+                        <span class="fixed-value">1.00</span>
+                    </div>
+                    <div class="card-field">
+                        <label for="sm-mmol">Amount (mmol)</label>
+                        <input type="number" id="sm-mmol" step="0.001" readonly placeholder="Calculated" aria-label="Starting Material Amount in mmol" aria-readonly="true">
+                    </div>
+                    <div class="card-field">
+                        <label for="sm-mass">Mass (mg)</label>
+                        <input type="number" id="sm-mass" step="0.1" min="0" placeholder="Mass" aria-label="Starting Material Mass in mg">
                     </div>
                 </div>
-                <div class="arrow-container">
-                    →
+
+                <div class="scheme-arrow">+</div>
+
+                <!-- Reagent Cards Container -->
+                <div class="reagent-cards-container" id="reagent-cards">
+                    <!-- Dynamic reagent cards will be added here -->
                 </div>
-                <div class="molecule-container">
-                    <label for="product-smiles">Product SMILES</label>
-                    <div class="cas-input-group" style="margin-bottom: 10px;">
-                        <input type="text" id="product-cas" placeholder="CAS No." class="cas-input" aria-label="Product CAS Number">
-                        <button id="product-fetch-btn" class="fetch-btn" aria-label="Fetch product data from PubChem">Fetch</button>
+
+                <div class="scheme-arrow">→</div>
+
+                <!-- Product Card -->
+                <div class="compound-card product-card" id="product-card">
+                    <div class="card-header">Product</div>
+                    <canvas id="product-canvas" class="compound-canvas" width="300" height="250" role="img" aria-label="Product molecular structure"></canvas>
+                    <div class="card-field">
+                        <label for="product-smiles">SMILES</label>
+                        <input type="text" id="product-smiles" class="smiles-input" placeholder="SMILES notation">
                     </div>
-                    <input type="text" id="product-smiles" class="smiles-input" placeholder="Enter SMILES notation">
-                    <canvas id="product-canvas" width="600" height="500" role="img" aria-label="Product molecular structure"></canvas>
                     <span class="error-message" id="product-error"></span>
                     <div id="product-stereo-warning" class="warning-box" style="display: none;">
-                        ⚠️ Stereochemistry may not be accurately represented.
+                        ⚠️ Stereochemistry warning
+                    </div>
+                    <div class="card-field">
+                        <label for="product-cas">CAS No.</label>
+                        <div class="cas-input-group">
+                            <input type="text" id="product-cas" placeholder="CAS No." class="cas-input" aria-label="Product CAS Number">
+                            <button id="product-fetch-btn" class="fetch-btn" aria-label="Fetch product data from PubChem">Fetch</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </section>
-
-        <!-- Stoichiometry Table Section -->
-        <section id="stoichiometry-section" class="card">
-            <h2>Stoichiometry Table</h2>
-            <div class="table-controls">
-                <button id="add-reagent" aria-label="Add new reagent row">+ Add Reagent</button>
-            </div>
-            <table id="stoich-table">
-                <thead>
-                    <tr>
-                        <th>Component</th>
-                        <th>Structure</th>
-                        <th>CAS No.</th>
-                        <th>Type</th>
-                        <th>MW (g/mol)</th>
-                        <th>Equivalents</th>
-                        <th>Amount (mmol)</th>
-                        <th>Mass (mg) / Volume (mL)</th>
-                        <th>Molarity (M) / Density (g/mL)</th>
-                        <th>Purity (wt%)</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="stoich-tbody">
-                    <!-- Limiting reagent row (fixed) -->
-                    <tr id="limiting-reagent-row" class="limiting-reagent">
-                        <td>Starting Material (Limiting Reagent)</td>
-                        <td class="reagent-structure-cell">-</td>
-                        <td>
-                            <div class="cas-input-group">
-                                <input type="text" id="sm-cas" placeholder="CAS No." class="cas-input" aria-label="Starting Material CAS Number">
-                                <button id="sm-fetch-btn" class="fetch-btn" aria-label="Fetch data from PubChem">Fetch</button>
-                            </div>
-                        </td>
-                        <td>Pure</td>
-                        <td><input type="number" id="sm-mw" step="0.01" min="0" placeholder="MW" aria-label="Starting Material Molecular Weight"></td>
-                        <td>1.00</td>
-                        <td><input type="number" id="sm-mmol" step="0.001" readonly placeholder="Calculated" aria-label="Starting Material Amount in mmol" aria-readonly="true"></td>
-                        <td><input type="number" id="sm-mass" step="0.1" min="0" placeholder="Mass" aria-label="Starting Material Mass in mg"></td>
-                        <td>-</td>
-                        <td>-</td>
-                        <td></td>
-                    </tr>
-                    <!-- Dynamic reagent rows will be added here -->
-                </tbody>
-            </table>
         </section>
 
         <!-- Conditions Section -->
@@ -1795,62 +1997,70 @@
         function addReagentRow(reagentName = '', mw = '', eq = '1.0') {
             reagentCounter++;
             const reagentId = `r${reagentCounter}`;
-            const tbody = document.getElementById('stoich-tbody');
+            const container = document.getElementById('reagent-cards');
 
-            const row = document.createElement('tr');
-            row.className = 'reagent-row';
+            const row = document.createElement('div');
+            row.className = 'compound-card reagent-card reagent-row';
             row.dataset.reagentId = reagentId;
-            row.dataset.type = 'pure';  // Default type
+            row.dataset.type = 'pure-solid';  // Default type
 
             row.innerHTML = `
-                <td>
+                <div class="card-header">
                     <input type="text" class="reagent-name" placeholder="Reagent name" value="${reagentName}">
-                </td>
-                <td class="reagent-structure-cell">
-                    <canvas class="reagent-canvas" width="150" height="100" data-reagent-id="${reagentId}" role="img" aria-label="Reagent molecular structure"></canvas>
-                </td>
-                <td>
+                    <button class="remove-btn" onclick="removeReagentRow('${reagentId}')" aria-label="Remove reagent">✕</button>
+                </div>
+                <canvas class="reagent-canvas compound-canvas" width="150" height="150" data-reagent-id="${reagentId}" role="img" aria-label="Reagent molecular structure"></canvas>
+                <div class="card-field">
+                    <label>CAS No.</label>
                     <div class="cas-input-group">
                         <input type="text" class="reagent-cas" placeholder="CAS No.">
                         <button class="reagent-fetch-btn fetch-btn" aria-label="Fetch data from PubChem">Fetch</button>
                     </div>
-                </td>
-                <td>
+                </div>
+                <div class="card-field">
+                    <label>Type</label>
                     <select class="reagent-type">
-    <option value="pure-solid" selected>Pure Solid</option>
-    <option value="pure-liquid">Pure Liquid</option>
-    <option value="solution-molarity">Solution (Molarity)</option>
-    <option value="solution-density">Solution (Wt%)</option>
-</select>
-                </td>
-                <td>
+                        <option value="pure-solid" selected>Pure Solid</option>
+                        <option value="pure-liquid">Pure Liquid</option>
+                        <option value="solution-molarity">Solution (M)</option>
+                        <option value="solution-density">Solution (Wt%)</option>
+                    </select>
+                </div>
+                <div class="card-field">
+                    <label>MW (g/mol)</label>
                     <input type="number" class="reagent-mw" step="0.01" min="0" placeholder="MW" value="${mw}">
-                </td>
-                <td>
-                    <input type="number" class="reagent-eq" step="0.1" min="0" placeholder="Equiv." value="${eq}">
-                </td>
-                <td>
+                </div>
+                <div class="card-field">
+                    <label>Equivalents</label>
+                    <input type="number" class="reagent-eq" step="0.1" min="0" placeholder="Eq" value="${eq}">
+                </div>
+                <div class="card-field">
+                    <label>Amount (mmol)</label>
                     <span class="reagent-mmol">-</span>
-                </td>
-                <td>
-                    <input type="number" class="reagent-mass" step="0.1" min="0" placeholder="Mass (mg)">
-                    <input type="number" class="reagent-volume" step="0.01" min="0" placeholder="Volume (mL)" >
-                </td>
-                <td>
-                    <input type="number" class="reagent-molarity" step="0.01" min="0" placeholder="Molarity (M)" >
-                    <input type="number" class="reagent-density" step="0.01" min="0" placeholder="Density (g/mL)" >
-                    <span class="field-na">-</span>
-                </td>
-                <td>
-                    <input type="number" class="reagent-purity" step="0.1" min="0" max="100" placeholder="Purity %" value="100">
-                    <span class="field-na">-</span>
-                </td>
-                <td>
-                    <button class="remove-btn" onclick="removeReagentRow('${reagentId}')">Remove</button>
-                </td>
+                </div>
+                <div class="card-field reagent-mass-field">
+                    <label>Mass (mg)</label>
+                    <input type="number" class="reagent-mass" step="0.1" min="0" placeholder="Mass">
+                </div>
+                <div class="card-field reagent-volume-field">
+                    <label>Volume (mL)</label>
+                    <input type="number" class="reagent-volume" step="0.01" min="0" placeholder="Volume">
+                </div>
+                <div class="card-field reagent-molarity-field">
+                    <label>Molarity (M)</label>
+                    <input type="number" class="reagent-molarity" step="0.01" min="0" placeholder="M">
+                </div>
+                <div class="card-field reagent-density-field">
+                    <label>Density (g/mL)</label>
+                    <input type="number" class="reagent-density" step="0.01" min="0" placeholder="Density">
+                </div>
+                <div class="card-field reagent-purity-field">
+                    <label>Purity (%)</label>
+                    <input type="number" class="reagent-purity" step="0.1" min="0" max="100" placeholder="%" value="100">
+                </div>
             `;
 
-            tbody.appendChild(row);
+            container.appendChild(row);
 
             // Add event listeners for calculation
             const typeSelect = row.querySelector('.reagent-type');

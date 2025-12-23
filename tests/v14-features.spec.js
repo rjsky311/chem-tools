@@ -16,7 +16,7 @@ test.describe('v1.4 Feature Tests', () => {
         await page.goto(fileUrl);
         await page.evaluate(() => localStorage.clear());
         await page.reload();
-        await page.waitForSelector('#stoich-table');
+        await page.waitForSelector('#reaction-scheme-section');
     });
 
     // ===== Feature 1: Structure Visualization Fix =====
@@ -32,7 +32,7 @@ test.describe('v1.4 Feature Tests', () => {
 
             // 2. Reload page
             await page.reload();
-            await page.waitForSelector('#stoich-table');
+            await page.waitForSelector('#reaction-scheme-section');
             await page.waitForTimeout(1000);
 
             // 3. Verify SMILES restored
@@ -53,7 +53,7 @@ test.describe('v1.4 Feature Tests', () => {
 
             // 2. Reload page
             await page.reload();
-            await page.waitForSelector('#stoich-table');
+            await page.waitForSelector('#reaction-scheme-section');
             await page.waitForTimeout(1000);
 
             // 3. Verify
@@ -69,9 +69,9 @@ test.describe('v1.4 Feature Tests', () => {
 
     test.describe('Feature 1b: Reagent Visualization', () => {
 
-        test('Table header should have Structure column', async ({ page }) => {
-            const structureHeader = page.locator('#stoich-table thead th', { hasText: 'Structure' });
-            await expect(structureHeader).toBeVisible();
+        test('Reagent cards container should exist', async ({ page }) => {
+            const reagentContainer = page.locator('#reagent-cards');
+            await expect(reagentContainer).toBeVisible();
         });
 
         test('New reagent row should have canvas element', async ({ page }) => {
@@ -140,7 +140,7 @@ test.describe('v1.4 Feature Tests', () => {
 
             // Reload
             await page.reload();
-            await page.waitForSelector('#stoich-table');
+            await page.waitForSelector('#reaction-scheme-section');
 
             // Verify
             const casValue = await page.inputValue('#product-cas');
@@ -225,7 +225,7 @@ test.describe('v1.4 Feature Tests', () => {
                 page.click('#clearAllBtn')
             ]);
 
-            await page.waitForSelector('#stoich-table');
+            await page.waitForSelector('#reaction-scheme-section');
             await page.waitForTimeout(500);
 
             // Verify localStorage is cleared

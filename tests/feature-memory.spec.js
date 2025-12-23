@@ -14,7 +14,7 @@ test.describe('Feature: Auto-Save & Data Persistence', () => {
         await page.goto(fileUrl);
 
         // Wait for page to be fully loaded
-        await page.waitForSelector('#stoich-table');
+        await page.waitForSelector('#reaction-scheme-section');
         await page.waitForSelector('#add-reagent');
     });
 
@@ -37,7 +37,7 @@ test.describe('Feature: Auto-Save & Data Persistence', () => {
 
         // Step 2: Reload the page
         await page.reload();
-        await page.waitForSelector('#stoich-table');
+        await page.waitForSelector('#reaction-scheme-section');
 
         // Step 3: Verify data persists after reload
         const smMwAfter = await page.locator('#sm-mw').inputValue();
@@ -82,7 +82,7 @@ test.describe('Feature: Auto-Save & Data Persistence', () => {
 
         // Step 4: Reload the page
         await page.reload();
-        await page.waitForSelector('#stoich-table');
+        await page.waitForSelector('#reaction-scheme-section');
         await page.waitForTimeout(500);
 
         // Step 5: Verify reagent data persists
@@ -133,7 +133,7 @@ test.describe('Feature: Auto-Save & Data Persistence', () => {
 
         // Step 3: Reload the page
         await page.reload();
-        await page.waitForSelector('#stoich-table');
+        await page.waitForSelector('#reaction-scheme-section');
 
         // Step 4: Verify data persists
         const solventNameAfter = await page.locator('#solvent-name').inputValue();
@@ -182,7 +182,7 @@ test.describe('Feature: Auto-Save & Data Persistence', () => {
 
         // Step 4: Reload
         await page.reload();
-        await page.waitForSelector('#stoich-table');
+        await page.waitForSelector('#reaction-scheme-section');
         await page.waitForTimeout(500);
 
         // Step 5: Verify all data persists
@@ -215,7 +215,7 @@ test.describe('Feature: Auto-Save & Data Persistence', () => {
 
         // Reload
         await page.reload();
-        await page.waitForSelector('#stoich-table');
+        await page.waitForSelector('#reaction-scheme-section');
 
         // Clear the data
         await page.locator('#sm-mw').fill('');
@@ -224,7 +224,7 @@ test.describe('Feature: Auto-Save & Data Persistence', () => {
 
         // Reload again
         await page.reload();
-        await page.waitForSelector('#stoich-table');
+        await page.waitForSelector('#reaction-scheme-section');
 
         // Verify data is cleared (not the old values)
         const smMw = await page.locator('#sm-mw').inputValue();
