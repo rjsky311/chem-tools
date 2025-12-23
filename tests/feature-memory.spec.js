@@ -116,33 +116,37 @@ test.describe('Feature: Auto-Save & Data Persistence', () => {
         await page.locator('#sm-mass').fill('100');
         await page.waitForTimeout(300);
 
-        // Step 2: Fill in Solvent Calculator
+        // Step 2: Fill in Solvent Calculator (including new v2.1 fields)
         await page.locator('#solvent-name').fill('THF');
+        await page.locator('#solvent-cas').fill('109-99-9');
         await page.locator('#solvent-conc').fill('0.5');
 
         await page.waitForTimeout(300);
 
         // Verify before reload
         const solventNameBefore = await page.locator('#solvent-name').inputValue();
+        const solventCasBefore = await page.locator('#solvent-cas').inputValue();
         const solventConcBefore = await page.locator('#solvent-conc').inputValue();
 
-        console.log('[Before Reload] Solvent:', solventNameBefore, 'Conc:', solventConcBefore);
+        console.log('[Before Reload] Solvent:', solventNameBefore, 'CAS:', solventCasBefore, 'Conc:', solventConcBefore);
 
         expect(solventNameBefore).toBe('THF');
+        expect(solventCasBefore).toBe('109-99-9');
         expect(solventConcBefore).toBe('0.5');
 
         // Step 3: Reload the page
         await page.reload();
         await page.waitForSelector('#reaction-scheme-section');
 
-        // Step 4: Verify data persists
+        // Step 4: Verify data persists (including CAS)
         const solventNameAfter = await page.locator('#solvent-name').inputValue();
+        const solventCasAfter = await page.locator('#solvent-cas').inputValue();
         const solventConcAfter = await page.locator('#solvent-conc').inputValue();
 
-        console.log('[After Reload] Solvent:', solventNameAfter, 'Conc:', solventConcAfter);
+        console.log('[After Reload] Solvent:', solventNameAfter, 'CAS:', solventCasAfter, 'Conc:', solventConcAfter);
 
-        // THIS SHOULD FAIL until auto-save is implemented
         expect(solventNameAfter).toBe('THF');
+        expect(solventCasAfter).toBe('109-99-9');
         expect(solventConcAfter).toBe('0.5');
     });
 

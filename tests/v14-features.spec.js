@@ -236,4 +236,53 @@ test.describe('v1.4 Feature Tests', () => {
             expect(hasStoredData).toBe(false);
         });
     });
+
+    // ===== v2.1 Solvent CAS Fetch Tests =====
+    test.describe('v2.1 Solvent CAS Fetch', () => {
+        test('Should have Solvent CAS input and Fetch button', async ({ page }) => {
+            // Verify new v2.1 elements exist
+            await expect(page.locator('#solvent-cas')).toBeVisible();
+            await expect(page.locator('#solvent-fetch-btn')).toBeVisible();
+            await expect(page.locator('#solvent-bp')).toBeVisible();
+        });
+
+        test('Should show error when fetching with empty CAS', async ({ page }) => {
+            // Setup dialog handler
+            let alertMessage = '';
+            page.on('dialog', async dialog => {
+                alertMessage = dialog.message();
+                await dialog.accept();
+            });
+
+            // Click fetch with empty CAS
+            await page.locator('#solvent-fetch-btn').click();
+
+            // Verify alert was shown
+            expect(alertMessage).toBe('Please enter a CAS number');
+        });
+
+        test('Should have vertical Conditions layout', async ({ page }) => {
+            // Verify the new vertical layout structure
+            const conditionsVertical = page.locator('.conditions-vertical');
+            await expect(conditionsVertical).toBeVisible();
+
+            // Verify all condition rows exist
+            const conditionRows = page.locator('.condition-row');
+            expect(await conditionRows.count()).toBeGreaterThanOrEqual(7);
+        });
+
+        test('Solvent CAS input should persist after reload', async ({ page }) => {
+            // Fill solvent CAS
+            await page.locator('#solvent-cas').fill('67-66-3');
+            await page.waitForTimeout(300);
+
+            // Reload
+            await page.reload();
+            await page.waitForSelector('#reaction-scheme-section');
+
+            // Verify persistence
+            const solventCas = await page.locator('#solvent-cas').inputValue();
+            expect(solventCas).toBe('67-66-3');
+        });
+    });
 });
