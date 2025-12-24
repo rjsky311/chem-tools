@@ -631,6 +631,121 @@
             background: white;
         }
 
+        /* ===== v3.0: Limiting Reagent Badge ===== */
+        .limiting-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%);
+            color: #333;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 12px;
+            white-space: nowrap;
+            box-shadow: 0 2px 4px rgba(255, 183, 0, 0.3);
+        }
+
+        .compound-card.is-limiting {
+            border: 2px solid #ffd700;
+            box-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
+        }
+
+        .compound-card.is-limiting .card-header {
+            background: linear-gradient(180deg, #fffbe6 0%, transparent 100%);
+        }
+
+        /* ===== v3.0: Yield Display System ===== */
+        .yield-display {
+            margin-top: 10px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .yield-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .yield-progress-container {
+            height: 12px;
+            background: #e9ecef;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .yield-progress-bar {
+            height: 100%;
+            width: 0%;
+            border-radius: 6px;
+            transition: width 0.3s ease, background-color 0.3s ease;
+            background: #6c757d;
+        }
+
+        .yield-percentage {
+            font-size: 18px;
+            font-weight: 700;
+            text-align: center;
+            color: #333;
+        }
+
+        /* Traffic Light Colors */
+        .yield-display.yield-excellent .yield-progress-bar {
+            background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+        }
+        .yield-display.yield-excellent .yield-percentage {
+            color: #28a745;
+        }
+
+        .yield-display.yield-good .yield-progress-bar {
+            background: linear-gradient(90deg, #ffc107 0%, #fd7e14 100%);
+        }
+        .yield-display.yield-good .yield-percentage {
+            color: #856404;
+        }
+
+        .yield-display.yield-poor .yield-progress-bar {
+            background: linear-gradient(90deg, #dc3545 0%, #c82333 100%);
+        }
+        .yield-display.yield-poor .yield-percentage {
+            color: #dc3545;
+        }
+
+        /* ===== v3.0: GHS Safety Icons ===== */
+        .ghs-icons {
+            display: inline-flex;
+            gap: 2px;
+            font-size: 16px;
+            margin-left: auto;
+            padding-left: 8px;
+            cursor: help;
+            position: relative;
+        }
+
+        .ghs-tooltip {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: #333;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            white-space: nowrap;
+            z-index: 1000;
+            margin-top: 4px;
+        }
+
+        .ghs-icons:hover .ghs-tooltip {
+            display: block;
+        }
+
         .card-field {
             display: flex;
             flex-direction: column;
@@ -902,6 +1017,30 @@
                 font-size: 11px;
                 padding: 4px 6px !important;
             }
+
+            /* v3.0 Print Styles */
+            .limiting-badge {
+                background: #ffd700;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .yield-display {
+                border: 1px solid #333;
+            }
+
+            .yield-progress-bar {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .ghs-icons {
+                font-size: 12px;
+            }
+
+            .ghs-tooltip {
+                display: none !important;
+            }
         }
     </style>
 </head>
@@ -987,6 +1126,27 @@
                             <button id="product-fetch-btn" class="fetch-btn" aria-label="Fetch product data from PubChem">Fetch</button>
                         </div>
                     </div>
+                    <!-- v3.0: MW and Yield fields -->
+                    <div class="card-field">
+                        <label for="product-mw">MW (g/mol)</label>
+                        <input type="number" id="product-mw" step="0.01" min="0" placeholder="From CAS or manual">
+                    </div>
+                    <div class="card-field">
+                        <label>Theoretical Yield (mg)</label>
+                        <span id="product-theoretical" class="fixed-value">-</span>
+                    </div>
+                    <div class="card-field">
+                        <label for="product-actual">Actual Mass (mg)</label>
+                        <input type="number" id="product-actual" step="0.01" min="0" placeholder="Enter actual yield">
+                    </div>
+                    <!-- v3.0: Traffic Light Yield Display -->
+                    <div class="yield-display" id="yield-display">
+                        <div class="yield-label">Yield</div>
+                        <div class="yield-progress-container">
+                            <div class="yield-progress-bar" id="yield-bar"></div>
+                        </div>
+                        <div class="yield-percentage" id="yield-percentage">--%</div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -1059,15 +1219,20 @@
                 mw: 0,
                 mass: 0,
                 mmol: 0,
-                cas: ''
+                cas: '',
+                ghsData: null  // v3.0: GHS safety data
             },
             product: {
                 smiles: '',
                 cas: '',
                 mw: 0,
-                name: ''
+                name: '',
+                theoreticalYield: 0,  // v3.0: Theoretical yield in mg
+                actualMass: 0,        // v3.0: Actual mass in mg
+                percentYield: 0,      // v3.0: Percent yield
+                ghsData: null         // v3.0: GHS safety data
             },
-            reagents: [],
+            reagents: [],  // Each reagent now has: role, ghsData
             conditions: {
                 solventName: '',
                 solventCAS: '',
@@ -1077,7 +1242,8 @@
                 temperature: '',
                 time: '',
                 notes: ''
-            }
+            },
+            limitingReagent: null  // v3.0: ID of limiting reagent ('sm' or reagent id)
         };
 
         let reagentCounter = 0;
@@ -1334,7 +1500,8 @@
                     cas: document.getElementById('sm-cas').value || '',
                     mw: document.getElementById('sm-mw').value || '',
                     mass: document.getElementById('sm-mass').value || '',
-                    smiles: document.getElementById('sm-smiles').value || ''
+                    smiles: document.getElementById('sm-smiles').value || '',
+                    ghsData: reactionPlan.startingMaterial.ghsData || null  // v3.0
                 };
 
                 // Collect all reagent rows
@@ -1346,6 +1513,7 @@
                         name: row.querySelector('.reagent-name').value || '',
                         cas: row.querySelector('.reagent-cas').value || '',
                         type: row.querySelector('.reagent-type').value || 'pure-solid',
+                        role: row.querySelector('.reagent-role') ? row.querySelector('.reagent-role').value : 'reagent',  // v3.0
                         mw: row.querySelector('.reagent-mw').value || '',
                         eq: row.querySelector('.reagent-eq').value || '1.0',
                         mass: row.querySelector('.reagent-mass').value || '',
@@ -1373,8 +1541,12 @@
                 const product = {
                     smiles: document.getElementById('product-smiles').value || '',
                     cas: document.getElementById('product-cas').value || '',
-                    mw: reactionPlan.product.mw || 0,
-                    name: reactionPlan.product.name || ''
+                    mw: document.getElementById('product-mw').value || '',
+                    name: reactionPlan.product.name || '',
+                    theoreticalYield: reactionPlan.product.theoreticalYield || 0,  // v3.0
+                    actualMass: document.getElementById('product-actual').value || '',  // v3.0
+                    percentYield: reactionPlan.product.percentYield || 0,  // v3.0
+                    ghsData: reactionPlan.product.ghsData || null  // v3.0
                 };
 
                 // Package all data
@@ -1383,7 +1555,8 @@
                     reagents,
                     conditions,
                     product,
-                    reagentCounter  // Save the counter to maintain unique IDs
+                    reagentCounter,  // Save the counter to maintain unique IDs
+                    limitingReagent: reactionPlan.limitingReagent  // v3.0
                 };
 
                 // Save to localStorage
@@ -1442,6 +1615,12 @@
 
                         // Update row's data-type attribute for CSS visibility
                         row.dataset.type = reagentData.type || 'pure-solid';
+                        
+                        // v3.0: Restore role
+                        const roleSelect = row.querySelector('.reagent-role');
+                        if (roleSelect && reagentData.role) {
+                            roleSelect.value = reagentData.role;
+                        }
 
                         // Update the reagent ID to match saved ID (maintain consistency)
                         row.dataset.reagentId = reagentData.id;
@@ -1476,8 +1655,29 @@
                 if (data.product) {
                     document.getElementById('product-smiles').value = data.product.smiles || '';
                     document.getElementById('product-cas').value = data.product.cas || '';
-                    reactionPlan.product.mw = data.product.mw || 0;
+                    
+                    // v3.0: Restore MW and yield fields
+                    const mwValue = data.product.mw || '';
+                    document.getElementById('product-mw').value = mwValue;
+                    reactionPlan.product.mw = parseFloat(mwValue) || 0;
                     reactionPlan.product.name = data.product.name || '';
+                    
+                    // v3.0: Restore actual mass
+                    if (data.product.actualMass) {
+                        document.getElementById('product-actual').value = data.product.actualMass;
+                        reactionPlan.product.actualMass = parseFloat(data.product.actualMass) || 0;
+                    }
+                    
+                    // v3.0: Restore GHS data
+                    if (data.product.ghsData) {
+                        reactionPlan.product.ghsData = data.product.ghsData;
+                        displayGHSPictograms('product-card', data.product.ghsData);
+                    }
+                }
+                
+                // v3.0: Restore limitingReagent
+                if (data.limitingReagent) {
+                    reactionPlan.limitingReagent = data.limitingReagent;
                 }
 
                 // Update all data models
@@ -1487,6 +1687,10 @@
 
                 // Trigger calculations after restoration
                 calculateSMMmol();  // This will cascade to reagents and solvent volume
+                
+                // v3.0: Trigger limiting reagent and yield calculations
+                determineLimitingReagent();
+                calculatePercentYield();
 
                 // Draw restored structures
                 if (data.startingMaterial && data.startingMaterial.smiles) {
@@ -1521,11 +1725,15 @@
                 recalculateAllReagents();
                 // Recalculate solvent volume when SM mmol changes
                 calculateSolventVolume();
+                // v3.0: Recalculate limiting reagent
+                determineLimitingReagent();
             } else {
                 reactionPlan.startingMaterial.mmol = 0;
                 document.getElementById('sm-mmol').value = '';
                 recalculateAllReagents();
                 calculateSolventVolume();
+                // v3.0: Recalculate limiting reagent
+                determineLimitingReagent();
             }
         }
 
@@ -1724,6 +1932,160 @@
             });
         }
 
+        // ===== v3.0: Limiting Reagent Logic =====
+
+        /**
+         * Determine the limiting reagent based on mmol values
+         * Compares SM and all reagents with role=reactant
+         */
+        function determineLimitingReagent() {
+            const reactants = [];
+
+            // SM is always a reactant
+            const smMmol = reactionPlan.startingMaterial.mmol;
+            if (smMmol > 0) {
+                reactants.push({
+                    id: "sm",
+                    mmol: smMmol,
+                    stoichCoeff: 1,
+                    effectiveMmol: smMmol
+                });
+            }
+
+            // Filter reagents with role=reactant or reagent (not catalyst)
+            reactionPlan.reagents
+                .filter(r => ['reactant', 'reagent'].includes(r.role) && r.mmol > 0)
+                .forEach(r => {
+                    const stoichCoeff = r.stoichCoeff || 1;
+                    reactants.push({
+                        id: r.id,
+                        mmol: r.mmol,
+                        stoichCoeff: stoichCoeff,
+                        effectiveMmol: r.mmol / stoichCoeff
+                    });
+                });
+
+            // Find the one with minimum effectiveMmol
+            if (reactants.length === 0) {
+                reactionPlan.limitingReagent = null;
+                updateLimitingReagentUI(null);
+                calculateTheoreticalYield(0);
+                return null;
+            }
+
+            const limiting = reactants.reduce((min, curr) =>
+                curr.effectiveMmol < min.effectiveMmol ? curr : min
+            );
+
+            reactionPlan.limitingReagent = limiting.id;
+
+            // Update UI
+            updateLimitingReagentUI(limiting.id);
+
+            // Calculate theoretical yield based on limiting reagent
+            calculateTheoreticalYield(limiting.effectiveMmol);
+
+            return limiting.id;
+        }
+
+        /**
+         * Update UI to show limiting reagent badge
+         */
+        function updateLimitingReagentUI(limitingId) {
+            // Clear all existing badges
+            document.querySelectorAll(".limiting-badge").forEach(el => el.remove());
+            document.querySelectorAll(".compound-card").forEach(el => {
+                el.classList.remove("is-limiting");
+            });
+
+            if (!limitingId) return;
+
+            // Find the target card
+            let targetCard;
+            if (limitingId === "sm") {
+                targetCard = document.getElementById("sm-card");
+            } else {
+                targetCard = document.querySelector(`[data-reagent-id="${limitingId}"]`);
+            }
+
+            if (targetCard) {
+                targetCard.classList.add("is-limiting");
+                const header = targetCard.querySelector(".card-header");
+
+                // Create badge
+                const badge = document.createElement("span");
+                badge.className = "limiting-badge";
+                badge.textContent = "🏆 Limiting";
+
+                // Insert before remove button if exists, otherwise append
+                const removeBtn = header.querySelector(".remove-btn");
+                if (removeBtn) {
+                    header.insertBefore(badge, removeBtn);
+                } else {
+                    header.appendChild(badge);
+                }
+            }
+        }
+
+        /**
+         * Calculate theoretical yield based on limiting reagent mmol
+         */
+        function calculateTheoreticalYield(limitingMmol) {
+            const productMW = parseFloat(document.getElementById("product-mw").value) || 0;
+
+            if (limitingMmol > 0 && productMW > 0) {
+                // Theoretical yield (mg) = mmol * MW
+                const theoreticalYield = limitingMmol * productMW;
+                reactionPlan.product.theoreticalYield = theoreticalYield;
+                document.getElementById("product-theoretical").textContent = theoreticalYield.toFixed(2);
+
+                // Recalculate percent yield
+                calculatePercentYield();
+            } else {
+                reactionPlan.product.theoreticalYield = 0;
+                document.getElementById("product-theoretical").textContent = "-";
+                calculatePercentYield();
+            }
+        }
+
+        /**
+         * Calculate percent yield and update traffic light display
+         */
+        function calculatePercentYield() {
+            const actualMass = parseFloat(document.getElementById("product-actual").value) || 0;
+            const theoreticalYield = reactionPlan.product.theoreticalYield;
+
+            const yieldBar = document.getElementById("yield-bar");
+            const yieldPercentage = document.getElementById("yield-percentage");
+            const yieldDisplay = document.getElementById("yield-display");
+
+            if (actualMass > 0 && theoreticalYield > 0) {
+                const percentYield = (actualMass / theoreticalYield) * 100;
+                reactionPlan.product.percentYield = percentYield;
+                reactionPlan.product.actualMass = actualMass;
+
+                // Update UI
+                yieldPercentage.textContent = percentYield.toFixed(1) + "%";
+                yieldBar.style.width = Math.min(percentYield, 100) + "%";
+
+                // Traffic light logic
+                yieldDisplay.classList.remove("yield-excellent", "yield-good", "yield-poor");
+                if (percentYield >= 80) {
+                    yieldDisplay.classList.add("yield-excellent");  // Green
+                } else if (percentYield >= 50) {
+                    yieldDisplay.classList.add("yield-good");       // Yellow
+                } else {
+                    yieldDisplay.classList.add("yield-poor");       // Red
+                }
+            } else {
+                reactionPlan.product.percentYield = 0;
+                yieldPercentage.textContent = "--%";
+                yieldBar.style.width = "0%";
+                yieldDisplay.classList.remove("yield-excellent", "yield-good", "yield-poor");
+            }
+        }
+
+
         // Handle reagent type change
         function handleTypeChange(reagentId, row) {
             const typeSelect = row.querySelector('.reagent-type');
@@ -1823,6 +2185,147 @@
                 throw error;
             }
         }
+
+
+        // ===== v3.0: GHS Safety Information =====
+
+        const GHS_EMOJI_MAP = {
+            'H220': '🔥', 'H221': '🔥', 'H222': '🔥', 'H223': '🔥', 'H224': '🔥', 
+            'H225': '🔥', 'H226': '🔥', 'H227': '🔥', 'H228': '🔥',
+            'H200': '💥', 'H201': '💥', 'H202': '💥', 'H203': '💥', 'H240': '💥', 'H241': '💥',
+            'H270': '⚡', 'H271': '⚡', 'H272': '⚡',
+            'H300': '☠️', 'H301': '☠️', 'H310': '☠️', 'H311': '☠️', 'H330': '☠️', 'H331': '☠️',
+            'H302': '⚠️', 'H312': '⚠️', 'H332': '⚠️',
+            'H314': '🧪', 'H318': '🧪',
+            'H315': '⚠️', 'H319': '⚠️', 'H335': '⚠️',
+            'H317': '⚠️', 'H334': '🫁',
+            'H340': '🧬', 'H341': '🧬', 'H350': '🧬', 'H351': '🧬', 
+            'H360': '🧬', 'H361': '🧬', 'H362': '🧬',
+            'H370': '💀', 'H371': '⚠️', 'H372': '💀', 'H373': '⚠️',
+            'H400': '🐟', 'H401': '🐟', 'H402': '🐟', 'H410': '🐟', 
+            'H411': '🐟', 'H412': '🐟', 'H413': '🐟'
+        };
+
+        async function fetchGHSData(cas) {
+            try {
+                const cidUrl = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/' + encodeURIComponent(cas) + '/cids/JSON';
+                const cidResponse = await fetch(cidUrl);
+
+                if (!cidResponse.ok) {
+                    console.warn('[GHS] CID lookup failed for CAS:', cas);
+                    return { hCodes: [], pictograms: [] };
+                }
+
+                const cidData = await cidResponse.json();
+                const cid = cidData.IdentifierList && cidData.IdentifierList.CID && cidData.IdentifierList.CID[0];
+
+                if (!cid) {
+                    console.warn('[GHS] No CID found for CAS:', cas);
+                    return { hCodes: [], pictograms: [] };
+                }
+
+                const ghsUrl = 'https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/' + cid + '/JSON?heading=GHS+Classification';
+                const ghsResponse = await fetch(ghsUrl);
+
+                if (!ghsResponse.ok) {
+                    console.warn('[GHS] GHS data not available for CID:', cid);
+                    return { hCodes: [], pictograms: [] };
+                }
+
+                const ghsData = await ghsResponse.json();
+                return parseGHSResponse(ghsData);
+
+            } catch (error) {
+                console.error('[GHS] Error fetching GHS data:', error);
+                return { hCodes: [], pictograms: [] };
+            }
+        }
+
+        function parseGHSResponse(ghsData) {
+            const hCodes = new Set();
+            const pictograms = new Set();
+
+            try {
+                function searchForHazardStatements(obj) {
+                    if (!obj) return;
+
+                    if (Array.isArray(obj)) {
+                        obj.forEach(function(item) { searchForHazardStatements(item); });
+                        return;
+                    }
+
+                    if (typeof obj === 'object') {
+                        if (obj.String && typeof obj.String === 'string') {
+                            const match = obj.String.match(/^(H[0-9]{3}[A-Za-z]?):/);
+                            if (match) {
+                                const hCode = match[1].toUpperCase();
+                                hCodes.add(hCode);
+                                if (GHS_EMOJI_MAP[hCode]) {
+                                    pictograms.add(GHS_EMOJI_MAP[hCode]);
+                                }
+                            }
+                        }
+
+                        if (obj.StringWithMarkup && Array.isArray(obj.StringWithMarkup)) {
+                            obj.StringWithMarkup.forEach(function(item) {
+                                if (item.String) {
+                                    const match = item.String.match(/^(H[0-9]{3}[A-Za-z]?):/);
+                                    if (match) {
+                                        const hCode = match[1].toUpperCase();
+                                        hCodes.add(hCode);
+                                        if (GHS_EMOJI_MAP[hCode]) {
+                                            pictograms.add(GHS_EMOJI_MAP[hCode]);
+                                        }
+                                    }
+                                }
+                            });
+                        }
+
+                        Object.values(obj).forEach(function(val) { searchForHazardStatements(val); });
+                    }
+                }
+
+                searchForHazardStatements(ghsData);
+
+            } catch (error) {
+                console.error('[GHS] Error parsing GHS response:', error);
+            }
+
+            return {
+                hCodes: Array.from(hCodes).sort(),
+                pictograms: Array.from(pictograms)
+            };
+        }
+
+        function displayGHSPictograms(cardOrId, ghsData) {
+            const card = typeof cardOrId === 'string'
+                ? document.getElementById(cardOrId)
+                : cardOrId;
+
+            if (!card) return;
+
+            const existing = card.querySelector('.ghs-icons');
+            if (existing) existing.remove();
+
+            if (!ghsData.pictograms || ghsData.pictograms.length === 0) return;
+
+            const ghsContainer = document.createElement('div');
+            ghsContainer.className = 'ghs-icons';
+
+            const uniquePictograms = Array.from(new Set(ghsData.pictograms)).slice(0, 3);
+            const tooltip = document.createElement('span');
+            tooltip.className = 'ghs-tooltip';
+            tooltip.textContent = ghsData.hCodes.join(', ');
+            
+            ghsContainer.textContent = uniquePictograms.join('');
+            ghsContainer.appendChild(tooltip);
+
+            const header = card.querySelector('.card-header');
+            if (header) {
+                header.appendChild(ghsContainer);
+            }
+        }
+
 
         /**
          * Populate Starting Material fields with PubChem data
@@ -1974,6 +2477,12 @@
 
                 console.log('[SM Fetch] Calling populateStartingMaterialFromPubChem...');
                 populateStartingMaterialFromPubChem(data);
+                
+                // v3.0: Fetch GHS data
+                const ghsData = await fetchGHSData(cas);
+                displayGHSPictograms('sm-card', ghsData);
+                reactionPlan.startingMaterial.ghsData = ghsData;
+                
                 saveToLocalStorage();
 
                 // Success feedback
@@ -2220,6 +2729,17 @@
                             row.dataset.smiles = smiles;
                         }
                     }
+                    
+                    // v3.0: Fetch GHS data
+                    const ghsData = await fetchGHSData(cas);
+                    displayGHSPictograms(row, ghsData);
+                    
+                    // Store GHS data in model
+                    const reagentId = row.dataset.reagentId;
+                    const reagent = reactionPlan.reagents.find(function(r) { return r.id === reagentId; });
+                    if (reagent) {
+                        reagent.ghsData = ghsData;
+                    }
 
                     saveToLocalStorage();
                 } else {
@@ -2277,6 +2797,14 @@
                     </select>
                 </div>
                 <div class="card-field">
+                    <label>Role</label>
+                    <select class="reagent-role">
+                        <option value="reactant">Reactant</option>
+                        <option value="reagent" selected>Reagent</option>
+                        <option value="catalyst">Catalyst</option>
+                    </select>
+                </div>
+                <div class="card-field">
                     <label>MW (g/mol)</label>
                     <input type="number" class="reagent-mw" step="0.01" min="0" placeholder="MW" value="${mw}">
                 </div>
@@ -2330,12 +2858,21 @@
                 saveToLocalStorage();
             });
 
+            // v3.0: Role change listener
+            const roleSelect = row.querySelector('.reagent-role');
+            roleSelect.addEventListener('change', () => {
+                updateReagentInModel(reagentId, row);
+                determineLimitingReagent();
+                saveToLocalStorage();
+            });
+
             // MW or Eq change → Calculate (forward)
             mwInput.addEventListener('input', () => {
                 massInput.dataset.manualOverride = '';
                 volumeInput.dataset.manualOverride = '';
                 calculateReagent(row, 'forward');
                 updateReagentInModel(reagentId, row);
+                determineLimitingReagent();
                 saveToLocalStorage();
             });
 
@@ -2344,6 +2881,7 @@
                 volumeInput.dataset.manualOverride = '';
                 calculateReagent(row, 'forward');
                 updateReagentInModel(reagentId, row);
+                determineLimitingReagent();
                 saveToLocalStorage();
             });
 
@@ -2354,6 +2892,7 @@
                     calculateReagent(row, 'reverse');
                 }
                 updateReagentInModel(reagentId, row);
+                determineLimitingReagent();
                 saveToLocalStorage();
             });
 
@@ -2364,6 +2903,7 @@
                     calculateReagent(row, 'reverse');
                 }
                 updateReagentInModel(reagentId, row);
+                determineLimitingReagent();
                 saveToLocalStorage();
             });
 
@@ -2372,6 +2912,7 @@
                 volumeInput.dataset.manualOverride = '';
                 calculateReagent(row, 'forward');
                 updateReagentInModel(reagentId, row);
+                determineLimitingReagent();
                 saveToLocalStorage();
             });
 
@@ -2380,6 +2921,7 @@
                 volumeInput.dataset.manualOverride = '';
                 calculateReagent(row, 'forward');
                 updateReagentInModel(reagentId, row);
+                determineLimitingReagent();
                 saveToLocalStorage();
             });
 
@@ -2388,6 +2930,7 @@
                 volumeInput.dataset.manualOverride = '';
                 calculateReagent(row, 'forward');
                 updateReagentInModel(reagentId, row);
+                determineLimitingReagent();
                 saveToLocalStorage();
             });
 
@@ -2442,6 +2985,7 @@
                 id: id,
                 name: name,
                 type: type,
+                role: 'reagent',  // v3.0: Default role
                 mw: parseFloat(mw) || 0,
                 eq: parseFloat(eq) || 1.0,
                 mmol: 0,
@@ -2450,7 +2994,8 @@
                 molarity: 0,
                 density: 0,
                 purity: 0,
-                cas: ''
+                cas: '',
+                ghsData: null  // v3.0: GHS safety data
             });
         }
 
@@ -2469,6 +3014,10 @@
                 // Common fields
                 reagent.name = row.querySelector('.reagent-name').value;
                 reagent.type = typeSelect ? typeSelect.value : 'pure';
+                
+                // v3.0: Update role
+                const roleSelect = row.querySelector('.reagent-role');
+                reagent.role = roleSelect ? roleSelect.value : 'reagent';
                 reagent.mw = parseFloat(row.querySelector('.reagent-mw').value) || 0;
                 reagent.eq = parseFloat(row.querySelector('.reagent-eq').value) || 0;
 
@@ -2648,6 +3197,20 @@
             });
             document.getElementById('notes').addEventListener('input', () => {
                 updateConditionsData();
+                saveToLocalStorage();
+            });
+
+            // v3.0: Product MW change listener
+            document.getElementById('product-mw').addEventListener('input', () => {
+                reactionPlan.product.mw = parseFloat(document.getElementById('product-mw').value) || 0;
+                determineLimitingReagent();
+                saveToLocalStorage();
+            });
+
+            // v3.0: Product Actual Mass change listener
+            document.getElementById('product-actual').addEventListener('input', () => {
+                reactionPlan.product.actualMass = parseFloat(document.getElementById('product-actual').value) || 0;
+                calculatePercentYield();
                 saveToLocalStorage();
             });
 
