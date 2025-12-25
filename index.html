@@ -1050,8 +1050,11 @@
             <h1>Digital Reaction Planner</h1>
             <div class="header-buttons">
                 <button id="clearAllBtn" class="clear-btn" aria-label="Clear all data and reset">Clear All</button>
-                <button id="exportBtn" aria-label="Print or export reaction plan">Print/Export</button>
+                <button id="saveBtn" aria-label="Save experiment as JSON file">💾 Save JSON</button>
+                <button id="loadBtn" aria-label="Load experiment from JSON file">📂 Load JSON</button>
+                <button id="exportBtn" aria-label="Print reaction plan">🖨️ Print</button>
             </div>
+            <input type="file" id="fileInput" accept=".json" style="display: none;">
         </header>
 
         <!-- v2.0 Reaction Scheme Section (Card Layout) -->
@@ -1568,6 +1571,137 @@
         }
 
         /**
+         * Restore reaction plan from data object
+         * v3.1: Extracted from loadFromLocalStorage for reuse with JSON import
+         * @param {Object} data - The reaction plan data object
+         */
+        function restoreReactionPlan(data) {
+            // Clear existing reagent rows before restoring
+            const existingRows = document.querySelectorAll('.reagent-row');
+            existingRows.forEach(row => row.remove());
+            reactionPlan.reagents = [];
+
+            // Restore Starting Material
+            if (data.startingMaterial) {
+                document.getElementById('sm-cas').value = data.startingMaterial.cas || '';
+                document.getElementById('sm-mw').value = data.startingMaterial.mw || '';
+                document.getElementById('sm-mass').value = data.startingMaterial.mass || '';
+                document.getElementById('sm-smiles').value = data.startingMaterial.smiles || '';
+            }
+
+            // Restore reagentCounter to maintain unique IDs
+            if (data.reagentCounter !== undefined) {
+                reagentCounter = data.reagentCounter;
+            }
+
+            // Restore Reagents (create rows dynamically)
+            if (data.reagents && data.reagents.length > 0) {
+                data.reagents.forEach(reagentData => {
+                    // Create new reagent row with basic data
+                    const row = addReagentRow(reagentData.name, reagentData.mw, reagentData.eq);
+
+                    // Populate all fields
+                    row.querySelector('.reagent-cas').value = reagentData.cas || '';
+                    row.querySelector('.reagent-type').value = reagentData.type || 'pure-solid';
+                    row.querySelector('.reagent-mw').value = reagentData.mw || '';
+                    row.querySelector('.reagent-eq').value = reagentData.eq || '1.0';
+                    row.querySelector('.reagent-mass').value = reagentData.mass || '';
+                    row.querySelector('.reagent-volume').value = reagentData.volume || '';
+                    row.querySelector('.reagent-molarity').value = reagentData.molarity || '';
+                    row.querySelector('.reagent-density').value = reagentData.density || '';
+                    row.querySelector('.reagent-purity').value = reagentData.purity || '';
+
+                    // Update row's data-type attribute for CSS visibility
+                    row.dataset.type = reagentData.type || 'pure-solid';
+
+                    // v3.0: Restore role
+                    const roleSelect = row.querySelector('.reagent-role');
+                    if (roleSelect && reagentData.role) {
+                        roleSelect.value = reagentData.role;
+                    }
+
+                    // Update the reagent ID to match saved ID (maintain consistency)
+                    row.dataset.reagentId = reagentData.id;
+
+                    // Restore and draw reagent SMILES
+                    if (reagentData.smiles) {
+                        row.dataset.smiles = reagentData.smiles;
+                        const canvas = row.querySelector('.reagent-canvas');
+                        if (canvas) {
+                            drawReagentStructure(reagentData.smiles, canvas);
+                        }
+                    }
+
+                    // Update data model
+                    const reagentId = reagentData.id;
+                    updateReagentInModel(reagentId, row);
+                });
+            }
+
+            // Restore Conditions
+            if (data.conditions) {
+                document.getElementById('solvent-name').value = data.conditions.solventName || '';
+                document.getElementById('solvent-cas').value = data.conditions.solventCAS || '';
+                document.getElementById('solvent-bp').value = data.conditions.solventBP || '';
+                document.getElementById('solvent-conc').value = data.conditions.solventConc || '';
+                document.getElementById('temperature').value = data.conditions.temperature || '';
+                document.getElementById('time').value = data.conditions.time || '';
+                document.getElementById('notes').value = data.conditions.notes || '';
+            }
+
+            // Restore Product
+            if (data.product) {
+                document.getElementById('product-smiles').value = data.product.smiles || '';
+                document.getElementById('product-cas').value = data.product.cas || '';
+
+                // v3.0: Restore MW and yield fields
+                const mwValue = data.product.mw || '';
+                document.getElementById('product-mw').value = mwValue;
+                reactionPlan.product.mw = parseFloat(mwValue) || 0;
+                reactionPlan.product.name = data.product.name || '';
+
+                // v3.0: Restore actual mass
+                if (data.product.actualMass) {
+                    document.getElementById('product-actual').value = data.product.actualMass;
+                    reactionPlan.product.actualMass = parseFloat(data.product.actualMass) || 0;
+                }
+
+                // v3.0: Restore GHS data
+                if (data.product.ghsData) {
+                    reactionPlan.product.ghsData = data.product.ghsData;
+                    displayGHSPictograms('product-card', data.product.ghsData);
+                }
+            }
+
+            // v3.0: Restore limitingReagent
+            if (data.limitingReagent) {
+                reactionPlan.limitingReagent = data.limitingReagent;
+            }
+
+            // Update all data models
+            updateStartingMaterialData();
+            updateProductData();
+            updateConditionsData();
+
+            // Trigger calculations after restoration
+            calculateSMMmol();  // This will cascade to reagents and solvent volume
+
+            // v3.0: Trigger limiting reagent and yield calculations
+            determineLimitingReagent();
+            calculatePercentYield();
+
+            // Draw restored structures
+            if (data.startingMaterial && data.startingMaterial.smiles) {
+                drawStructure(data.startingMaterial.smiles, 'sm-canvas', 'sm-error');
+            }
+            if (data.product && data.product.smiles) {
+                drawStructure(data.product.smiles, 'product-canvas', 'product-error');
+            }
+
+            console.log('[Restore] Data restoration complete');
+        }
+
+        /**
          * Load saved data from localStorage and populate form
          * @returns {boolean} - True if data was loaded, false otherwise
          */
@@ -1583,124 +1717,8 @@
                 const data = JSON.parse(savedData);
                 console.log('[Auto-Restore] Loading saved data:', data);
 
-                // Restore Starting Material
-                if (data.startingMaterial) {
-                    document.getElementById('sm-cas').value = data.startingMaterial.cas || '';
-                    document.getElementById('sm-mw').value = data.startingMaterial.mw || '';
-                    document.getElementById('sm-mass').value = data.startingMaterial.mass || '';
-                    document.getElementById('sm-smiles').value = data.startingMaterial.smiles || '';
-                }
+                restoreReactionPlan(data);
 
-                // Restore reagentCounter to maintain unique IDs
-                if (data.reagentCounter !== undefined) {
-                    reagentCounter = data.reagentCounter;
-                }
-
-                // Restore Reagents (create rows dynamically)
-                if (data.reagents && data.reagents.length > 0) {
-                    data.reagents.forEach(reagentData => {
-                        // Create new reagent row with basic data
-                        const row = addReagentRow(reagentData.name, reagentData.mw, reagentData.eq);
-
-                        // Populate all fields
-                        row.querySelector('.reagent-cas').value = reagentData.cas || '';
-                        row.querySelector('.reagent-type').value = reagentData.type || 'pure-solid';
-                        row.querySelector('.reagent-mw').value = reagentData.mw || '';
-                        row.querySelector('.reagent-eq').value = reagentData.eq || '1.0';
-                        row.querySelector('.reagent-mass').value = reagentData.mass || '';
-                        row.querySelector('.reagent-volume').value = reagentData.volume || '';
-                        row.querySelector('.reagent-molarity').value = reagentData.molarity || '';
-                        row.querySelector('.reagent-density').value = reagentData.density || '';
-                        row.querySelector('.reagent-purity').value = reagentData.purity || '';
-
-                        // Update row's data-type attribute for CSS visibility
-                        row.dataset.type = reagentData.type || 'pure-solid';
-                        
-                        // v3.0: Restore role
-                        const roleSelect = row.querySelector('.reagent-role');
-                        if (roleSelect && reagentData.role) {
-                            roleSelect.value = reagentData.role;
-                        }
-
-                        // Update the reagent ID to match saved ID (maintain consistency)
-                        row.dataset.reagentId = reagentData.id;
-
-                        // Restore and draw reagent SMILES
-                        if (reagentData.smiles) {
-                            row.dataset.smiles = reagentData.smiles;
-                            const canvas = row.querySelector('.reagent-canvas');
-                            if (canvas) {
-                                drawReagentStructure(reagentData.smiles, canvas);
-                            }
-                        }
-
-                        // Update data model
-                        const reagentId = reagentData.id;
-                        updateReagentInModel(reagentId, row);
-                    });
-                }
-
-                // Restore Conditions
-                if (data.conditions) {
-                    document.getElementById('solvent-name').value = data.conditions.solventName || '';
-                    document.getElementById('solvent-cas').value = data.conditions.solventCAS || '';
-                    document.getElementById('solvent-bp').value = data.conditions.solventBP || '';
-                    document.getElementById('solvent-conc').value = data.conditions.solventConc || '';
-                    document.getElementById('temperature').value = data.conditions.temperature || '';
-                    document.getElementById('time').value = data.conditions.time || '';
-                    document.getElementById('notes').value = data.conditions.notes || '';
-                }
-
-                // Restore Product
-                if (data.product) {
-                    document.getElementById('product-smiles').value = data.product.smiles || '';
-                    document.getElementById('product-cas').value = data.product.cas || '';
-                    
-                    // v3.0: Restore MW and yield fields
-                    const mwValue = data.product.mw || '';
-                    document.getElementById('product-mw').value = mwValue;
-                    reactionPlan.product.mw = parseFloat(mwValue) || 0;
-                    reactionPlan.product.name = data.product.name || '';
-                    
-                    // v3.0: Restore actual mass
-                    if (data.product.actualMass) {
-                        document.getElementById('product-actual').value = data.product.actualMass;
-                        reactionPlan.product.actualMass = parseFloat(data.product.actualMass) || 0;
-                    }
-                    
-                    // v3.0: Restore GHS data
-                    if (data.product.ghsData) {
-                        reactionPlan.product.ghsData = data.product.ghsData;
-                        displayGHSPictograms('product-card', data.product.ghsData);
-                    }
-                }
-                
-                // v3.0: Restore limitingReagent
-                if (data.limitingReagent) {
-                    reactionPlan.limitingReagent = data.limitingReagent;
-                }
-
-                // Update all data models
-                updateStartingMaterialData();
-                updateProductData();
-                updateConditionsData();
-
-                // Trigger calculations after restoration
-                calculateSMMmol();  // This will cascade to reagents and solvent volume
-                
-                // v3.0: Trigger limiting reagent and yield calculations
-                determineLimitingReagent();
-                calculatePercentYield();
-
-                // Draw restored structures
-                if (data.startingMaterial && data.startingMaterial.smiles) {
-                    drawStructure(data.startingMaterial.smiles, 'sm-canvas', 'sm-error');
-                }
-                if (data.product && data.product.smiles) {
-                    drawStructure(data.product.smiles, 'product-canvas', 'product-error');
-                }
-
-                console.log('[Auto-Restore] Data restoration complete');
                 return true;
             } catch (error) {
                 console.error('[Auto-Restore] Error loading from localStorage:', error);
@@ -3085,6 +3103,66 @@
             addReagentRow('HCl', '36.46', '2.0');
         }
 
+        // ===== v3.1: JSON Export/Import Functions =====
+
+        /**
+         * Export current reaction plan to JSON file
+         * v3.1: Save experiment data as downloadable JSON
+         */
+        function exportToJSON() {
+            const dataStr = JSON.stringify(reactionPlan, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const today = new Date();
+            const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+            const filename = `DrChem_${dateStr}.json`;
+
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            console.log('[Export] Saved as:', filename);
+        }
+
+        /**
+         * Trigger file input for JSON import
+         * v3.1: Load experiment data from JSON file
+         */
+        function importFromJSON() {
+            document.getElementById('fileInput').click();
+        }
+
+        /**
+         * Handle file input change event for JSON import
+         * @param {Event} event - The file input change event
+         */
+        function handleFileImport(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    restoreReactionPlan(data);
+                    alert('Experiment loaded successfully!');
+                    console.log('[Import] Loaded from:', file.name);
+                } catch (error) {
+                    alert('Error loading file: Invalid JSON format');
+                    console.error('[Import] Error:', error);
+                }
+            };
+            reader.readAsText(file);
+
+            // Clear input to allow re-selecting the same file
+            event.target.value = '';
+        }
+
         // ===== Event Handlers & Initialization =====
 
         function initializeEventListeners() {
@@ -3214,10 +3292,19 @@
                 saveToLocalStorage();
             });
 
-            // Export button
+            // Export button (Print)
             document.getElementById('exportBtn').addEventListener('click', () => {
                 window.print();
             });
+
+            // v3.1: Save JSON button
+            document.getElementById('saveBtn').addEventListener('click', exportToJSON);
+
+            // v3.1: Load JSON button
+            document.getElementById('loadBtn').addEventListener('click', importFromJSON);
+
+            // v3.1: File input change handler
+            document.getElementById('fileInput').addEventListener('change', handleFileImport);
         }
 
         // DOM Content Loaded - Initialize everything
