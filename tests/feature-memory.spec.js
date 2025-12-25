@@ -13,6 +13,10 @@ test.describe('Feature: Auto-Save & Data Persistence', () => {
         const fileUrl = 'file://' + path.resolve(__dirname, '../index.html');
         await page.goto(fileUrl);
 
+        // Clear localStorage to ensure clean state
+        await page.evaluate(() => localStorage.clear());
+        await page.reload();
+
         // Wait for page to be fully loaded
         await page.waitForSelector('#reaction-scheme-section');
         await page.waitForSelector('#add-reagent');
@@ -158,7 +162,7 @@ test.describe('Feature: Auto-Save & Data Persistence', () => {
 
         // Step 2: Add two reagents with different types
         await page.click('#add-reagent');
-        const reagent1 = page.locator('.reagent-row').nth(-2); // Second to last (if example data exists)
+        const reagent1 = page.locator('.reagent-row').last();
         await reagent1.locator('.reagent-type').selectOption('pure-solid');
         await reagent1.locator('.reagent-mw').fill('100');
         await reagent1.locator('.reagent-eq').fill('2.0');
@@ -176,7 +180,9 @@ test.describe('Feature: Auto-Save & Data Persistence', () => {
         await page.locator('#solvent-conc').fill('0.2');
         await page.locator('#temperature').fill('0°C');
         await page.locator('#time').fill('4 h');
-        await page.locator('#notes').fill('Test reaction for auto-save');
+        // v3.2: notes was replaced with procedure steps
+        await page.locator('#new-step-input').fill('Test reaction for auto-save');
+        await page.locator('#add-step-btn').click();
 
         await page.waitForTimeout(500);
 
@@ -208,7 +214,9 @@ test.describe('Feature: Auto-Save & Data Persistence', () => {
         expect(await page.locator('#solvent-conc').inputValue()).toBe('0.2');
         expect(await page.locator('#temperature').inputValue()).toBe('0°C');
         expect(await page.locator('#time').inputValue()).toBe('4 h');
-        expect(await page.locator('#notes').inputValue()).toBe('Test reaction for auto-save');
+        // v3.2: Check procedure steps instead of notes
+        const stepText = await page.locator('.step-text').first().textContent();
+        expect(stepText).toContain('Test reaction for auto-save');
     });
 
     test('Should handle empty/cleared data correctly', async ({ page }) => {

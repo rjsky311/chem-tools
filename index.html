@@ -4,33 +4,101 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Digital Reaction Planner</title>
+    <!-- v4.0: Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         /* ===== CSS Variables & Reset ===== */
         :root {
-            --primary-color: #007bff;
-            --text-color: #000000;
-            --background: #ffffff;
-            --border-color: #ddd;
-            --error-color: #dc3545;
-            --success-color: #28a745;
-            --card-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            --limiting-reagent-bg: #f0f8ff;
-            --table-header-bg: #f8f9fa;
+        /* 🧪 v4.0 Lab Theme Colors */
+        --primary: #0f766e;           /* Teal 700 */
+        --primary-hover: #0d9488;     /* Teal 600 */
+        --primary-light: rgba(15, 118, 110, 0.1);
+
+        --bg-body: #f8fafc;           /* Slate 50 */
+        --bg-card: #ffffff;
+        --text-main: #0f172a;         /* Slate 900 */
+        --text-muted: #64748b;        /* Slate 500 */
+        --border-color: #e2e8f0;      /* Slate 200 */
+
+        /* 🚦 Status Colors (High Contrast) */
+        --success-bg: #dcfce7;
+        --success-text: #14532d;
+        --success-border: #86efac;
+        --warning-bg: #fef9c3;
+        --warning-text: #713f12;
+        --warning-border: #fde047;
+        --danger-bg: #fee2e2;
+        --danger-text: #7f1d1d;
+        --danger-border: #fca5a5;
+
+        /* Legacy compatibility */
+        --primary-color: var(--primary);
+        --error-color: #dc2626;
+        --success-color: #16a34a;
+        --background: var(--bg-card);
+
+        /* 📏 Spacing & Sizing */
+        --input-height: 48px;
+        --radius-sm: 6px;
+        --radius-md: 8px;
+        --radius-lg: 12px;
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+
+        /* 🔤 Typography */
+        --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        --font-mono: 'Roboto Mono', ui-monospace, monospace;
+        --font-family: var(--font-ui);
+
+        /* Legacy */
+        --card-shadow: var(--shadow-md);
+        --limiting-reagent-bg: #f0fdfa;
+        --table-header-bg: #f8fafc;
+    }
+
+    /* 🌙 Dark Mode Support */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-body: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+
+            --primary: #14b8a6;
+            --primary-hover: #2dd4bf;
+            --primary-light: rgba(20, 184, 166, 0.15);
+
+            --success-bg: #052e16;
+            --success-text: #86efac;
+            --warning-bg: #422006;
+            --warning-text: #fde047;
+            --danger-bg: #450a0a;
+            --danger-text: #fca5a5;
+
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+            --limiting-reagent-bg: #042f2e;
+            --table-header-bg: #1e293b;
         }
+    }
 
         * {
             box-sizing: border-box;
         }
 
         body {
-            font-family: var(--font-family);
-            background-color: #f5f5f5;
-            margin: 0;
-            padding: 20px;
-            color: var(--text-color);
-            line-height: 1.6;
-        }
+        font-family: var(--font-ui);
+        background-color: var(--bg-body);
+        margin: 0;
+        padding: 20px;
+        color: var(--text-main);
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
 
         /* ===== Layout ===== */
         .container {
@@ -49,26 +117,27 @@
         }
 
         h1 {
-            color: #333;
-            margin: 0;
-            font-size: 28px;
-        }
+        color: var(--text-main);
+        margin: 0;
+        font-size: 28px;
+        font-weight: 600;
+    }
 
         h2 {
-            color: #333;
-            margin: 0 0 15px 0;
-            font-size: 20px;
-            font-weight: 600;
-        }
+        color: var(--text-main);
+        margin: 0 0 15px 0;
+        font-size: 20px;
+        font-weight: 600;
+    }
 
         /* ===== Card & Section Styles ===== */
         .card {
-            background: var(--background);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: var(--card-shadow);
-        }
+        background: var(--bg-card);
+        border: none;
+        border-radius: var(--radius-lg);
+        padding: 24px;
+        box-shadow: var(--shadow-md);
+    }
 
         /* ===== Reaction Scheme Section ===== */
         .reaction-display {
@@ -172,8 +241,12 @@
         }
 
         button:hover {
-            background-color: #0056b3;
-        }
+        background-color: var(--primary-hover);
+    }
+
+    button:active {
+        transform: scale(0.98);
+    }
 
         button:active {
             background-color: #004494;
@@ -624,12 +697,15 @@
         }
 
         .compound-canvas {
-            width: 100%;
-            height: 150px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            background: white;
-        }
+        width: 100%;
+        max-width: 300px;
+        height: auto;
+        display: block;
+        margin: 0 auto 15px auto;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        background: var(--bg-card);
+    }
 
         /* ===== v3.0: Limiting Reagent Badge ===== */
         .limiting-badge {
@@ -1067,7 +1143,7 @@
                 <!-- Starting Material Card -->
                 <div class="compound-card sm-card" id="sm-card">
                     <div class="card-header">Starting Material</div>
-                    <canvas id="sm-canvas" class="compound-canvas" width="300" height="250" role="img" aria-label="Starting material molecular structure"></canvas>
+                    <canvas id="sm-canvas" class="compound-canvas" width="600" height="500" role="img" aria-label="Starting material molecular structure"></canvas>
                     <div class="card-field">
                         <label for="sm-smiles">SMILES</label>
                         <input type="text" id="sm-smiles" class="smiles-input" placeholder="SMILES notation">
@@ -1113,7 +1189,7 @@
                 <!-- Product Card -->
                 <div class="compound-card product-card" id="product-card">
                     <div class="card-header">Product</div>
-                    <canvas id="product-canvas" class="compound-canvas" width="300" height="250" role="img" aria-label="Product molecular structure"></canvas>
+                    <canvas id="product-canvas" class="compound-canvas" width="600" height="500" role="img" aria-label="Product molecular structure"></canvas>
                     <div class="card-field">
                         <label for="product-smiles">SMILES</label>
                         <input type="text" id="product-smiles" class="smiles-input" placeholder="SMILES notation">
