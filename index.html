@@ -63,8 +63,8 @@
         :root {
             --bg-body: #0f172a;
             --bg-card: #1e293b;
-            --text-main: #f1f5f9;
-            --text-muted: #94a3b8;
+            --text-main: #ffffff;          /* v4.1: Pure white for max contrast */
+            --text-muted: #cbd5e1;          /* v4.1: Brighter muted text */
             --border-color: #334155;
 
             --primary: #14b8a6;
@@ -82,6 +82,46 @@
             --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
             --limiting-reagent-bg: #042f2e;
             --table-header-bg: #1e293b;
+        }
+
+        /* v4.2: Canvas always white for copy/paste compatibility */
+        .compound-canvas, .reagent-canvas {
+            background-color: #ffffff !important;
+        }
+
+        /* v4.2: Enhanced text contrast for dark mode */
+        .section-title, .card-title, h2, h3, h4, .card-header {
+            color: #f1f5f9 !important;
+        }
+
+        label, .data-label, .card-field label {
+            color: #cbd5e1 !important;
+        }
+
+        /* v4.3: Dark mode input readability fix */
+        input, select, textarea {
+            background-color: #334155 !important; /* Slate-700 深灰底 */
+            color: #ffffff !important;
+            border: 1px solid #475569 !important;
+        }
+
+        input::placeholder, textarea::placeholder {
+            color: #94a3b8 !important;
+        }
+
+        /* v4.3: Button text contrast */
+        .fetch-btn, .reagent-fetch-btn, button {
+            color: #ffffff !important;
+        }
+
+        .badge, .role-badge {
+            color: #000 !important;
+            font-weight: 700;
+        }
+
+        /* v4.3: Canvas always white for Word paste */
+        canvas, .compound-canvas, .reagent-canvas {
+            background-color: #ffffff !important;
         }
     }
 
@@ -613,10 +653,10 @@
 
         .reagent-canvas {
             border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background: white;
-            max-width: 150px;
-            max-height: 100px;
+            border-radius: 6px;
+            background-color: #ffffff !important;
+            width: 100% !important;
+            height: 150px !important;  /* v4.2: Fixed height for reagents */
         }
 
         .reagent-structure-cell {
@@ -697,14 +737,15 @@
         }
 
         .compound-canvas {
-        width: 100%;
-        max-width: 300px;
-        height: auto;
+        width: 100% !important;
+        max-width: 100%;
+        height: 200px !important;      /* v4.2: Fixed height */
         display: block;
         margin: 0 auto 15px auto;
         border: 1px solid var(--border-color);
-        border-radius: var(--radius-md);
-        background: var(--bg-card);
+        border-radius: 6px;
+        background-color: #ffffff !important; /* v4.2: Always white for Word paste */
+        object-fit: contain;
     }
 
         /* ===== v3.0: Limiting Reagent Badge ===== */
@@ -830,8 +871,8 @@
 
         .card-field label {
             font-size: 12px;
-            font-weight: 500;
-            color: #666;
+            font-weight: 600;           /* v4.1: Bolder for better visibility */
+            color: var(--text-muted);   /* v4.1: Use variable for dark mode support */
         }
 
         .card-field input,
@@ -1118,6 +1159,50 @@
                 display: none !important;
             }
         }
+
+        /* ===== v4.3: Toast Notifications ===== */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .toast {
+            background: #1e293b;
+            color: #ffffff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: toastSlideIn 0.3s ease-out;
+            max-width: 350px;
+            font-size: 14px;
+        }
+
+        .toast.success { background: #16a34a; }
+        .toast.error { background: #dc2626; }
+        .toast.warning { background: #d97706; }
+
+        @keyframes toastSlideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes toastSlideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        /* ===== v4.3: Loading Button State ===== */
+        .btn-loading {
+            opacity: 0.7 !important;
+            cursor: not-allowed !important;
+            pointer-events: none;
+        }
+
     </style>
 </head>
 <body>
@@ -1143,7 +1228,7 @@
                 <!-- Starting Material Card -->
                 <div class="compound-card sm-card" id="sm-card">
                     <div class="card-header">Starting Material</div>
-                    <canvas id="sm-canvas" class="compound-canvas" width="600" height="500" role="img" aria-label="Starting material molecular structure"></canvas>
+                    <canvas id="sm-canvas" class="compound-canvas" width="450" height="300" role="img" aria-label="Starting material molecular structure"></canvas>
                     <div class="card-field">
                         <label for="sm-smiles">SMILES</label>
                         <input type="text" id="sm-smiles" class="smiles-input" placeholder="SMILES notation">
@@ -1189,7 +1274,7 @@
                 <!-- Product Card -->
                 <div class="compound-card product-card" id="product-card">
                     <div class="card-header">Product</div>
-                    <canvas id="product-canvas" class="compound-canvas" width="600" height="500" role="img" aria-label="Product molecular structure"></canvas>
+                    <canvas id="product-canvas" class="compound-canvas" width="450" height="300" role="img" aria-label="Product molecular structure"></canvas>
                     <div class="card-field">
                         <label for="product-smiles">SMILES</label>
                         <input type="text" id="product-smiles" class="smiles-input" placeholder="SMILES notation">
@@ -1360,12 +1445,12 @@
         // Initialize SmilesDrawer with academic configuration
         function initializeSmilesDrawer() {
             drawer = new SmilesDrawer.Drawer({
-                width: 600,
-                height: 500,
-                bondThickness: 1.5,
-                bondLength: 25,
+                width: 450,
+                height: 300,
+                bondThickness: 2.0,         // v4.3: Bolder lines
+                bondLength: 40,             // v4.3: Larger bonds to fill canvas
                 shortBondLength: 0.8,
-                bondSpacing: 4,
+                bondSpacing: 7.2,           // 0.18 * 40
                 atomVisualization: 'default',
                 isomeric: true,
                 debug: false,
@@ -1373,9 +1458,9 @@
                 explicitHydrogens: false,
                 overlapSensitivity: 0.42,
                 overlapResolutionIterations: 1,
-                compactDrawing: true,
-                fontSizeLarge: 11,
-                fontSizeSmall: 6,
+                compactDrawing: false,
+                fontSizeLarge: 12,
+                fontSizeSmall: 8,
                 padding: 20,
                 themes: {
                     dark: {
@@ -1467,12 +1552,12 @@
 
         function initializeMiniDrawer() {
             miniDrawer = new SmilesDrawer.Drawer({
-                width: 150,
-                height: 100,
-                bondThickness: 1,
-                bondLength: 15,
+                width: 450,
+                height: 300,
+                bondThickness: 2.0,         // v4.3: Bolder
+                bondLength: 40,             // v4.3: Fill canvas
                 shortBondLength: 0.8,
-                bondSpacing: 3,
+                bondSpacing: 7.2,
                 atomVisualization: 'default',
                 isomeric: true,
                 debug: false,
@@ -1480,10 +1565,10 @@
                 explicitHydrogens: false,
                 overlapSensitivity: 0.42,
                 overlapResolutionIterations: 1,
-                compactDrawing: true,
-                fontSizeLarge: 8,
-                fontSizeSmall: 5,
-                padding: 5,
+                compactDrawing: false,
+                fontSizeLarge: 12,
+                fontSizeSmall: 8,
+                padding: 20,
                 themes: {
                     dark: {
                         C: '#000000',
@@ -2586,7 +2671,7 @@
             console.log('[SM Fetch] Starting fetch for CAS:', cas);
 
             if (!cas) {
-                alert('Please enter a CAS number');
+                showToast('⚠️ Please enter a CAS number', 'warning');
                 return;
             }
 
@@ -2639,7 +2724,7 @@
             console.log('[Product Fetch] Starting fetch for CAS:', cas);
 
             if (!cas) {
-                alert('Please enter a CAS number');
+                showToast('⚠️ Please enter a CAS number', 'warning');
                 return;
             }
 
@@ -2692,7 +2777,7 @@
             console.log('[Solvent Fetch] Starting fetch for CAS:', cas);
 
             if (!cas) {
-                alert('Please enter a CAS number');
+                showToast('⚠️ Please enter a CAS number', 'warning');
                 return;
             }
 
@@ -2814,7 +2899,7 @@
             const cas = casInput.value.trim();
 
             if (!cas) {
-                alert('Please enter a CAS number');
+                showToast('⚠️ Please enter a CAS number', 'warning');
                 return;
             }
 
@@ -2904,7 +2989,7 @@
                     <input type="text" class="reagent-name" placeholder="Reagent name" value="${reagentName}">
                     <button class="remove-btn" onclick="removeReagentRow('${reagentId}')" aria-label="Remove reagent">✕</button>
                 </div>
-                <canvas class="reagent-canvas compound-canvas" width="150" height="150" data-reagent-id="${reagentId}" role="img" aria-label="Reagent molecular structure"></canvas>
+                <canvas id="canvas-${reagentId}" class="reagent-canvas compound-canvas" width="450" height="300" data-reagent-id="${reagentId}" role="img" aria-label="Reagent molecular structure"></canvas>
                 <div class="card-field">
                     <label>CAS No.</label>
                     <div class="cas-input-group">
@@ -3543,6 +3628,38 @@
         }
 
         // DOM Content Loaded - Initialize everything
+        
+        // ===== v4.3: Toast Notification System =====
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            // Auto remove after 3 seconds
+            setTimeout(() => {
+                toast.style.animation = 'toastSlideOut 0.3s ease-out forwards';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ===== v4.3: Loading State Helper =====
+        function setButtonLoading(btn, isLoading, originalText = 'Fetch') {
+            if (isLoading) {
+                btn.dataset.originalText = btn.textContent;
+                btn.textContent = '⏳ Fetching...';
+                btn.classList.add('btn-loading');
+                btn.disabled = true;
+            } else {
+                btn.textContent = btn.dataset.originalText || originalText;
+                btn.classList.remove('btn-loading');
+                btn.disabled = false;
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             console.log('Digital Reaction Planner initializing...');
 
@@ -3563,5 +3680,8 @@
             console.log('Digital Reaction Planner ready!');
         });
     </script>
+
+    <!-- v4.3: Toast Notification Container -->
+    <div id="toast-container"></div>
 </body>
 </html>

@@ -246,20 +246,16 @@ test.describe('v1.4 Feature Tests', () => {
             await expect(page.locator('#solvent-bp')).toBeVisible();
         });
 
-        test('Should show error when fetching with empty CAS', async ({ page }) => {
-            // Setup dialog handler
-            let alertMessage = '';
-            page.on('dialog', async dialog => {
-                alertMessage = dialog.message();
-                await dialog.accept();
-            });
+        // ✅ 這是新的寫法 (請複製這個覆蓋上面的)
+test('Should show error when fetching with empty CAS', async ({ page }) => {
+    // 1. 點擊按鈕
+    await page.click('#solvent-fetch-btn');
 
-            // Click fetch with empty CAS
-            await page.locator('#solvent-fetch-btn').click();
-
-            // Verify alert was shown
-            expect(alertMessage).toBe('Please enter a CAS number');
-        });
+    // 2. 檢查是否有出現 Toast 通知 (那個黑色的框框)
+    const toast = page.locator('.toast');
+    await expect(toast).toBeVisible();
+    await expect(toast).toContainText('Please enter a CAS number');
+});
 
         test('Should have vertical Conditions layout', async ({ page }) => {
             // Verify the new vertical layout structure
