@@ -1190,9 +1190,21 @@
                     <input type="text" id="time" placeholder="e.g., 2 h, overnight">
                 </div>
             </div>
-            <div class="form-group" style="margin-top: 15px;">
-                <label for="notes">Additional Notes</label>
-                <textarea id="notes" rows="4" placeholder="Enter reaction notes, observations, or special conditions..."></textarea>
+            <!-- v3.2: Procedure Checklist -->
+            <div class="procedure-section">
+                <div class="procedure-header">
+                    <h3>Procedure Checklist</h3>
+                    <span id="procedure-progress" class="progress-badge">0/0</span>
+                </div>
+
+                <div class="procedure-input-group">
+                    <input type="text" id="new-step-input" placeholder="Add a new step (e.g., Mix reagents, Heat to 80°C)...">
+                    <button id="add-step-btn" type="button">Add Step</button>
+                </div>
+
+                <ul id="procedure-list" class="procedure-list">
+                    <!-- 動態生成的步驟項目 -->
+                </ul>
             </div>
         </section>
     </div>
@@ -1244,7 +1256,7 @@
                 solventVolume: 0,
                 temperature: '',
                 time: '',
-                notes: ''
+                steps: []  // v3.2: Procedure checklist { id, text, isDone, observation }
             },
             limitingReagent: null  // v3.0: ID of limiting reagent ('sm' or reagent id)
         };
@@ -1462,7 +1474,7 @@
             reactionPlan.conditions.solventVolume = parseFloat(document.getElementById('solvent-volume').value) || 0;
             reactionPlan.conditions.temperature = document.getElementById('temperature').value;
             reactionPlan.conditions.time = document.getElementById('time').value;
-            reactionPlan.conditions.notes = document.getElementById('notes').value;
+            // v3.2: notes removed, steps managed by addStep/toggleStep/removeStep
         }
 
         // ===== Clear All Data Function =====
@@ -1537,7 +1549,7 @@
                     solventConc: document.getElementById('solvent-conc').value || '',
                     temperature: document.getElementById('temperature').value || '',
                     time: document.getElementById('time').value || '',
-                    notes: document.getElementById('notes').value || ''
+                    steps: reactionPlan.conditions.steps || []  // v3.2: Procedure checklist
                 };
 
                 // Collect Product data
@@ -1646,7 +1658,26 @@
                 document.getElementById('solvent-conc').value = data.conditions.solventConc || '';
                 document.getElementById('temperature').value = data.conditions.temperature || '';
                 document.getElementById('time').value = data.conditions.time || '';
-                document.getElementById('notes').value = data.conditions.notes || '';
+
+                // v3.2 Migration: Handle notes → steps conversion
+                if (data.conditions.steps && Array.isArray(data.conditions.steps)) {
+                    // New format: use steps directly
+                    reactionPlan.conditions.steps = data.conditions.steps;
+                } else if (data.conditions.notes && typeof data.conditions.notes === 'string' && data.conditions.notes.trim()) {
+                    // Old format: convert notes to first step
+                    reactionPlan.conditions.steps = [{
+                        id: `step-migrated-${Date.now()}`,
+                        text: data.conditions.notes.trim(),
+                        isDone: false,
+                        observation: ''
+                    }];
+                    console.log('[Migration] Converted notes to steps:', data.conditions.notes);
+                } else {
+                    // Empty data
+                    reactionPlan.conditions.steps = [];
+                }
+
+                renderProcedure();
             }
 
             // Restore Product
@@ -3103,6 +3134,123 @@
             addReagentRow('HCl', '36.46', '2.0');
         }
 
+        // ===== v3.2: Procedure Checklist Functions =====
+
+        let stepCounter = 0;
+
+        /**
+         * Add a new step to the procedure checklist
+         * @param {string} text - The step description
+         */
+        function addStep(text) {
+            if (!text || !text.trim()) return;
+
+            const step = {
+                id: `step-${Date.now()}-${stepCounter++}`,
+                text: text.trim(),
+                isDone: false,
+                observation: ''
+            };
+
+            reactionPlan.conditions.steps.push(step);
+            renderProcedure();
+            saveToLocalStorage();
+
+            // Clear input
+            document.getElementById('new-step-input').value = '';
+        }
+
+        /**
+         * Toggle step completion status
+         * @param {string} id - The step ID
+         */
+        function toggleStep(id) {
+            const step = reactionPlan.conditions.steps.find(s => s.id === id);
+            if (step) {
+                step.isDone = !step.isDone;
+                renderProcedure();
+                saveToLocalStorage();
+            }
+        }
+
+        /**
+         * Remove a step from the checklist
+         * @param {string} id - The step ID
+         */
+        function removeStep(id) {
+            reactionPlan.conditions.steps = reactionPlan.conditions.steps.filter(s => s.id !== id);
+            renderProcedure();
+            saveToLocalStorage();
+        }
+
+        /**
+         * Update observation text for a step
+         * @param {string} id - The step ID
+         * @param {string} text - The observation text
+         */
+        function updateObservation(id, text) {
+            const step = reactionPlan.conditions.steps.find(s => s.id === id);
+            if (step) {
+                step.observation = text;
+                saveToLocalStorage();
+            }
+        }
+
+        /**
+         * Escape HTML to prevent XSS
+         * @param {string} text - Text to escape
+         * @returns {string} Escaped HTML
+         */
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        /**
+         * Render the procedure checklist UI
+         */
+        function renderProcedure() {
+            const list = document.getElementById('procedure-list');
+            const steps = reactionPlan.conditions.steps || [];
+
+            // Update progress badge
+            const doneCount = steps.filter(s => s.isDone).length;
+            document.getElementById('procedure-progress').textContent = `${doneCount}/${steps.length}`;
+
+            // Generate HTML
+            if (steps.length === 0) {
+                list.innerHTML = '<li class="procedure-empty">No steps added yet. Add your first step above.</li>';
+                return;
+            }
+
+            list.innerHTML = steps.map(step => `
+                <li class="procedure-item" data-step-id="${step.id}">
+                    <div class="step-main">
+                        <input type="checkbox" class="step-checkbox" ${step.isDone ? 'checked' : ''}>
+                        <span class="step-text ${step.isDone ? 'done' : ''}">${escapeHtml(step.text)}</span>
+                        <button class="step-delete-btn" title="Delete step">×</button>
+                    </div>
+                    <div class="step-observation">
+                        <input type="text" class="observation-input"
+                               placeholder="Observation..."
+                               value="${escapeHtml(step.observation)}">
+                    </div>
+                </li>
+            `).join('');
+
+            // Bind events
+            list.querySelectorAll('.procedure-item').forEach(item => {
+                const id = item.dataset.stepId;
+
+                item.querySelector('.step-checkbox').addEventListener('change', () => toggleStep(id));
+                item.querySelector('.step-delete-btn').addEventListener('click', () => removeStep(id));
+                item.querySelector('.observation-input').addEventListener('input', (e) => {
+                    updateObservation(id, e.target.value);
+                });
+            });
+        }
+
         // ===== v3.1: JSON Export/Import Functions =====
 
         /**
@@ -3273,10 +3421,21 @@
                 updateConditionsData();
                 saveToLocalStorage();
             });
-            document.getElementById('notes').addEventListener('input', () => {
-                updateConditionsData();
-                saveToLocalStorage();
+            // v3.2: Add Step button event
+            document.getElementById('add-step-btn').addEventListener('click', () => {
+                const input = document.getElementById('new-step-input');
+                addStep(input.value);
             });
+
+            // v3.2: Enter key to add step
+            document.getElementById('new-step-input').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    addStep(e.target.value);
+                }
+            });
+
+            // v3.2: Initial render of procedure list
+            renderProcedure();
 
             // v3.0: Product MW change listener
             document.getElementById('product-mw').addEventListener('input', () => {
