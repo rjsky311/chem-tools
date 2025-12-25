@@ -227,11 +227,11 @@ test.describe('Structure Visualization', () => {
 
         // Check canvas has width attribute set
         const width = await canvas.getAttribute('width');
-        expect(width).toBe('450');  // v4.3: Updated to 450 for optimized layout
+        expect(width).toBe('450');  // v5.0: Consistent canvas size
 
         // Check canvas has height attribute set
         const height = await canvas.getAttribute('height');
-        expect(height).toBe('300');  // v4.3: Updated to 300 for optimized layout
+        expect(height).toBe('300');  // v5.0: Consistent canvas size
 
         console.log('[Test] Canvas dimensions:', width, 'x', height);
     });
