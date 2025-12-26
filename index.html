@@ -2228,7 +2228,7 @@
             // Find the target card
             let targetCard;
             if (limitingId === "sm") {
-                targetCard = document.getElementById("sm-card");
+                targetCard = document.getElementById("starting-material-card");
             } else {
                 targetCard = document.querySelector(`[data-reagent-id="${limitingId}"]`);
             }
@@ -2900,17 +2900,102 @@
         }
 
         /**
+         * 解析熔點字串，返回數值（攝氏度）
+         * @param {string} mpString - 熔點字串 (如 "64-66 °C" 或 "-98 °C")
+         * @returns {number|null}
+         */
+        function parseMeltingPoint(mpString) {
+            if (!mpString) return null;
+            // 匹配負數或正數
+            const match = mpString.match(/([-]?\d+\.?\d*)/);
+            return match ? parseFloat(match[1]) : null;
+        }
+
+        /**
+         * 解析密度字串，返回數值
+         * @param {string} densityString - 密度字串 (如 "0.79 g/mL")
+         * @returns {string|null}
+         */
+        function parseDensity(densityString) {
+            if (!densityString) return null;
+            const match = densityString.match(/([\d.]+)/);
+            return match ? match[1] : null;
+        }
+
+        /**
+         * 自動偵測試劑類型並切換
+         * @param {HTMLElement} row - 試劑卡片元素
+         * @param {Object} physicalProps - { meltingPoint, density }
+         */
+        function autoDetectReagentType(row, physicalProps) {
+            const { meltingPoint, density } = physicalProps;
+            const typeSelect = row.querySelector('.reagent-type');
+
+            // 檢查用戶是否已手動選擇類型
+            if (row.dataset.userSelectedType === 'true') {
+                console.log('[AutoDetect] 用戶已手動選擇類型，跳過自動偵測');
+                return;
+            }
+
+            let newType = 'pure-solid'; // 預設固體
+            let densityValue = null;
+
+            // 解析熔點
+            const mpValue = parseMeltingPoint(meltingPoint);
+            console.log('[AutoDetect] Melting Point parsed:', mpValue);
+
+            // 判斷物質狀態
+            if (mpValue !== null) {
+                if (mpValue < 25) {
+                    newType = 'pure-liquid';
+                    console.log('[AutoDetect] 熔點 < 25°C → 液體');
+                } else {
+                    console.log('[AutoDetect] 熔點 >= 25°C → 固體');
+                }
+            } else if (density) {
+                // 沒有熔點但有密度，可能是液體
+                console.log('[AutoDetect] 無熔點資料但有密度');
+            }
+
+            // 解析密度
+            if (density) {
+                densityValue = parseDensity(density);
+                console.log('[AutoDetect] Density parsed:', densityValue);
+            }
+
+            // 切換類型
+            const currentType = row.dataset.type || 'pure-solid';
+            if (currentType !== newType) {
+                console.log('[AutoDetect] 切換類型:', currentType, '→', newType);
+                typeSelect.value = newType;
+                row.dataset.type = newType;
+
+                // 清空舊的欄位值
+                row.querySelector('.reagent-mass').value = '';
+                row.querySelector('.reagent-volume').value = '';
+                row.querySelector('.reagent-molarity').value = '';
+                row.querySelector('.reagent-density').value = '';
+            }
+
+            // 如果是液體且有密度，自動填入
+            if (newType === 'pure-liquid' && densityValue) {
+                const densityInput = row.querySelector('.reagent-density');
+                if (densityInput) {
+                    densityInput.value = densityValue;
+                    densityInput.setAttribute('value', densityValue);
+                    console.log('[AutoDetect] 自動填入密度:', densityValue);
+                }
+            }
+
+            // 觸發計算
+            calculateReagent(row, 'forward');
+        }
+
+        /**
          * Handle Reagent Fetch button click
-         * @param {string} reagentId - Reagent ID (e.g., 'r1')
+         * @param {HTMLElement} row - Reagent row element
          */
         async function handleReagentFetch(row) {
-            // v5.0: 加強版 - Debug + 強制填值
-
-            // 🔍 Debug: 確認 row 元素
-            console.log('[Fetch] Target Row:', row);
-            console.log('[Fetch] Row classes:', row?.className);
-            console.log('[Fetch] Row reagentId:', row?.dataset?.reagentId);
-
             const fetchBtn = row.querySelector('.reagent-fetch-btn');
             const casInput = row.querySelector('.reagent-cas');
             const nameInput = row.querySelector('.reagent-name');
@@ -2918,113 +3003,135 @@
             const smilesInput = row.querySelector('.reagent-smiles');
             const canvas = row.querySelector('.reagent-canvas');
 
-            // 🔍 Debug: 確認所有 DOM 元素
-            console.log('[Fetch] SMILES Input found:', smilesInput);
-            console.log('[Fetch] Canvas found:', canvas);
-            console.log('[Fetch] MW Input found:', mwInput);
-
             const cas = casInput?.value?.trim();
             if (!cas) {
                 showToast('Please enter a CAS number', 'warning');
                 return;
             }
 
-            // 1. 設定 Loading 狀態
+            // 設定 Loading 狀態
             const originalText = fetchBtn.textContent;
             fetchBtn.textContent = '⏳';
             fetchBtn.disabled = true;
             fetchBtn.classList.add('loading', 'btn-loading');
 
             try {
-                // 2. 請求 PubChem API (MW + SMILES)
+                // 1. 請求基本屬性 (MW + SMILES + Name)
                 console.log('[Fetch] Calling PubChem API for CAS:', cas);
-                const response = await fetch(
-                    `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${cas}/property/MolecularWeight,IUPACName,CanonicalSMILES/JSON`
+                const propsResponse = await fetch(
+                    `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(cas)}/property/MolecularWeight,IUPACName,CanonicalSMILES/JSON`
                 );
 
-                if (!response.ok) {
+                if (!propsResponse.ok) {
                     throw new Error('CAS not found in PubChem');
                 }
 
-                const data = await response.json();
-                console.log('[Fetch] API Response:', data);
+                const propsData = await propsResponse.json();
+                console.log('[Fetch] Props Response:', propsData);
 
-                // 3. 解析 JSON 結構 - 立即執行所有 DOM 操作
-                if (data.PropertyTable && data.PropertyTable.Properties && data.PropertyTable.Properties.length > 0) {
-                    const props = data.PropertyTable.Properties[0];
-                    console.log('[Fetch] Parsed props:', props);
-
-                    // 填入 MW (立即)
-                    if (props.MolecularWeight && mwInput) {
-                        mwInput.value = props.MolecularWeight;
-                        mwInput.setAttribute('value', props.MolecularWeight);
-                        console.log('[Fetch] MW filled:', mwInput.value);
-                    }
-
-                    // 填入 Name (立即)
-                    if (props.IUPACName && nameInput) {
-                        nameInput.value = props.IUPACName;
-                        nameInput.setAttribute('value', props.IUPACName);
-                    }
-
-                    // 4. 💉 填入 SMILES (關鍵修復 - 雙重保險)
-                    if (props.CanonicalSMILES) {
-                        const smiles = props.CanonicalSMILES;
-                        console.log('[Fetch] Got SMILES from API:', smiles);
-
-                        if (smilesInput) {
-                            // 雙重填值：.value + .setAttribute
-                            smilesInput.value = smiles;
-                            smilesInput.setAttribute('value', smiles);
-
-                            // 觸發事件通知
-                            smilesInput.dispatchEvent(new Event('input', { bubbles: true }));
-                            smilesInput.dispatchEvent(new Event('change', { bubbles: true }));
-
-                            console.log('[Fetch] SMILES Input .value after set:', smilesInput.value);
-                            console.log('[Fetch] SMILES Input getAttribute:', smilesInput.getAttribute('value'));
-                        } else {
-                            console.error('[Fetch] ❌ SMILES Input NOT FOUND!');
-                        }
-
-                        // 5. 立即繪圖
-                        if (canvas && typeof drawReagentStructure === 'function') {
-                            drawReagentStructure(smiles, canvas);
-                            row.dataset.smiles = smiles;
-                            console.log('[Fetch] ✅ Structure drawn on canvas');
-                        }
-                    } else {
-                        console.warn('[Fetch] ⚠️ No CanonicalSMILES in response');
-                    }
-
-                    // 觸發計算更新
-                    calculateReagent(row, 'forward');
-                    updateReagentInModel(row.dataset.reagentId, row);
-
-                    // Fetch GHS data (非同步，但不阻塞 SMILES)
-                    fetchGHSData(cas).then(ghsData => {
-                        displayGHSPictograms(row, ghsData);
-                        const reagentId = row.dataset.reagentId;
-                        const reagent = reactionPlan.reagents.find(r => r.id === reagentId);
-                        if (reagent) {
-                            reagent.ghsData = ghsData;
-                        }
-                    });
-
-                    saveToLocalStorage();
-                    showToast('Data fetched successfully!', 'success');
-                } else {
+                if (!propsData.PropertyTable?.Properties?.length) {
                     throw new Error('No data found');
                 }
+
+                const props = propsData.PropertyTable.Properties[0];
+                const cid = props.CID;
+
+                // 填入 MW
+                if (props.MolecularWeight && mwInput) {
+                    mwInput.value = props.MolecularWeight;
+                    mwInput.setAttribute('value', props.MolecularWeight);
+                }
+
+                // 填入 Name
+                if (props.IUPACName && nameInput) {
+                    nameInput.value = props.IUPACName;
+                    nameInput.setAttribute('value', props.IUPACName);
+                }
+
+                // 填入 SMILES
+                if (props.CanonicalSMILES && smilesInput) {
+                    const smiles = props.CanonicalSMILES;
+                    smilesInput.value = smiles;
+                    smilesInput.setAttribute('value', smiles);
+                    smilesInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    smilesInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+                    // 繪製結構
+                    if (canvas && typeof drawReagentStructure === 'function') {
+                        drawReagentStructure(smiles, canvas);
+                        row.dataset.smiles = smiles;
+                    }
+                }
+
+                // 2. 查詢 CID (用於 PUG-View)
+                let physicalProps = { meltingPoint: null, density: null };
+
+                if (cid) {
+                    console.log('[Fetch] CID:', cid, '- 查詢物理性質');
+
+                    // 並行查詢熔點和密度
+                    const [mpResponse, densityResponse] = await Promise.allSettled([
+                        fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/${cid}/JSON?heading=Melting+Point`),
+                        fetch(`https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/${cid}/JSON?heading=Density`)
+                    ]);
+
+                    // 解析熔點
+                    if (mpResponse.status === 'fulfilled' && mpResponse.value.ok) {
+                        try {
+                            const mpData = await mpResponse.value.json();
+                            const mpSection = mpData?.Record?.Section?.[0]?.Section?.[0]?.Information?.[0];
+                            physicalProps.meltingPoint = mpSection?.Value?.StringWithMarkup?.[0]?.String || null;
+                            console.log('[Fetch] Melting Point:', physicalProps.meltingPoint);
+                        } catch (e) {
+                            console.log('[Fetch] 無法解析熔點資料');
+                        }
+                    }
+
+                    // 解析密度
+                    if (densityResponse.status === 'fulfilled' && densityResponse.value.ok) {
+                        try {
+                            const densityData = await densityResponse.value.json();
+                            const densitySection = densityData?.Record?.Section?.[0]?.Section?.[0]?.Information?.[0];
+                            physicalProps.density = densitySection?.Value?.StringWithMarkup?.[0]?.String || null;
+                            console.log('[Fetch] Density:', physicalProps.density);
+                        } catch (e) {
+                            console.log('[Fetch] 無法解析密度資料');
+                        }
+                    }
+                }
+
+                // 3. 自動偵測類型 (如果用戶未手動選擇)
+                if (physicalProps.meltingPoint || physicalProps.density) {
+                    autoDetectReagentType(row, physicalProps);
+                } else {
+                    // 無物理性質資料，顯示警告
+                    showToast('無法取得物質狀態，請手動選擇類型', 'warning');
+                }
+
+                // 4. 觸發計算更新
+                calculateReagent(row, 'forward');
+                updateReagentInModel(row.dataset.reagentId, row);
+
+                // 5. Fetch GHS data (非同步)
+                fetchGHSData(cas).then(ghsData => {
+                    displayGHSPictograms(row, ghsData);
+                    const reagentId = row.dataset.reagentId;
+                    const reagent = reactionPlan.reagents.find(r => r.id === reagentId);
+                    if (reagent) {
+                        reagent.ghsData = ghsData;
+                    }
+                });
+
+                saveToLocalStorage();
+                showToast('Data fetched successfully!', 'success');
+
             } catch (error) {
-                console.error('[Fetch] ❌ Error:', error);
+                console.error('[Fetch] Error:', error);
                 showToast('Error: ' + error.message, 'error');
             } finally {
-                // 6. 解除 Loading 狀態
                 fetchBtn.textContent = originalText;
                 fetchBtn.disabled = false;
                 fetchBtn.classList.remove('loading', 'btn-loading');
-                console.log('[Fetch] Loading state removed');
             }
         }
 
@@ -3139,6 +3246,8 @@
 
             // Type dropdown listener
             typeSelect.addEventListener('change', () => {
+                // 標記用戶已手動選擇類型，Fetch 不會覆蓋
+                row.dataset.userSelectedType = 'true';
                 handleTypeChange(reagentId, row);
                 saveToLocalStorage();
             });
