@@ -128,12 +128,29 @@ npx serve .
 
 ### 執行測試 (Testing)
 
-本專案擁有完整的自動化測試覆蓋 (Test Driven Development)。
+本專案擁有完整的自動化測試覆蓋 (Test Driven Development)，共 **84 個測試案例**。
 
 ```bash
+# 安裝測試依賴
+npm install
+
 # 執行所有測試
 npx playwright test --reporter=list
+
+# 執行特定測試檔案
+npx playwright test tests/ui-components.spec.js
 ```
+
+### 測試涵蓋範圍
+
+| 模組 | 測試內容 |
+|------|----------|
+| **化學計量** | 純固體、純液體、溶液 (M/Wt%) 計算 |
+| **PubChem API** | CAS 查詢、MW/SMILES 填入、物理性質偵測 |
+| **限量試劑** | 自動判斷、Badge 顯示 |
+| **產率計算** | 理論產量、紅綠燈系統 |
+| **UI 元件** | 卡片操作、深色模式、列印樣式 |
+| **資料持久化** | LocalStorage、JSON 匯出/匯入 |
 
 ---
 

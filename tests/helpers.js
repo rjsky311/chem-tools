@@ -180,8 +180,11 @@ async function mockPubChemWithPhysicalProps(page, {
               Section: [{
                 TOCHeading: 'Melting Point',
                 Section: [{
-                  Information: [{
-                    Value: { StringWithMarkup: [{ String: meltingPoint }] }
+                  TOCHeading: 'Melting Point',
+                  Section: [{
+                    Information: [{
+                      Value: { StringWithMarkup: [{ String: meltingPoint }] }
+                    }]
                   }]
                 }]
               }]
@@ -209,8 +212,11 @@ async function mockPubChemWithPhysicalProps(page, {
               Section: [{
                 TOCHeading: 'Density',
                 Section: [{
-                  Information: [{
-                    Value: { StringWithMarkup: [{ String: `${density} g/mL` }] }
+                  TOCHeading: 'Density',
+                  Section: [{
+                    Information: [{
+                      Value: { StringWithMarkup: [{ String: `${density} g/mL` }] }
+                    }]
                   }]
                 }]
               }]

@@ -1607,11 +1607,16 @@
         function drawReagentStructure(smiles, canvas) {
             if (!smiles || !canvas) return;
             if (!miniDrawer) initializeMiniDrawer();
+            
+            // 獲取錯誤顯示元素
+            const reagentId = canvas.dataset.reagentId;
+            const errorElement = reagentId ? document.getElementById('error-' + reagentId) : null;
 
             const cleanSmiles = smiles.trim();
             if (!cleanSmiles) {
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (errorElement) errorElement.textContent = '';
                 return;
             }
 
@@ -1621,11 +1626,14 @@
                     ctx.clearRect(0, 0, canvas.width, canvas.height);
                     miniDrawer.draw(tree, canvas, 'dark', false);
                     console.log('[Reagent Draw] Structure drawn for:', cleanSmiles);
+                    if (errorElement) errorElement.textContent = '';
                 }, function(err) {
                     console.error('[Reagent Draw] SMILES parsing error:', err);
+                    if (errorElement) errorElement.textContent = 'Invalid SMILES notation';
                 });
             } catch (error) {
                 console.error('[Reagent Draw] Drawing error:', error);
+                if (errorElement) errorElement.textContent = 'Error drawing structure';
             }
         }
 
@@ -2389,9 +2397,13 @@
                 } else if (compound.CanonicalSMILES) {
                     smiles = compound.CanonicalSMILES;
                     console.log('SMILES found via CanonicalSMILES property:', smiles);
+                } else if (compound.ConnectivitySMILES) {
+                    smiles = compound.ConnectivitySMILES;
+                    console.log('SMILES found via ConnectivitySMILES property:', smiles);
                 } else if (compound.SMILES) {
-    smiles = compound.SMILES;
-} else {
+                    smiles = compound.SMILES;
+                    console.log('SMILES found via SMILES property:', smiles);
+                } else {
                     console.error('SMILES not found in compound properties');
                     console.error('Available properties:', Object.keys(compound));
                 }
@@ -2613,9 +2625,14 @@
                 alert('Warning: SMILES data not available from PubChem for this compound');
             }
 
+            // Fill MW (ensure it's a number before calling toFixed)
+            const mwValue = parseFloat(data.mw) || 0;
+            document.getElementById('product-mw').value = mwValue.toFixed(2);
+            console.log('[Product Populate] MW set to:', mwValue.toFixed(2));
+
             // Update data model
             reactionPlan.product.smiles = smilesInput.value;
-            reactionPlan.product.mw = parseFloat(data.mw) || 0;
+            reactionPlan.product.mw = mwValue;
             reactionPlan.product.name = data.name || '';
 
             // Auto-draw structure
@@ -3049,8 +3066,10 @@
                 }
 
                 // 填入 SMILES
-                if (props.CanonicalSMILES && smilesInput) {
-                    const smiles = props.CanonicalSMILES;
+                // Try multiple SMILES property names (PubChem API varies)
+                const smilesValue = props.CanonicalSMILES || props.ConnectivitySMILES || props.IsomericSMILES || props.SMILES || '';
+                if (smilesValue && smilesInput) {
+                    const smiles = smilesValue;
                     smilesInput.value = smiles;
                     smilesInput.setAttribute('value', smiles);
                     smilesInput.dispatchEvent(new Event('input', { bubbles: true }));
@@ -3079,7 +3098,7 @@
                     if (mpResponse.status === 'fulfilled' && mpResponse.value.ok) {
                         try {
                             const mpData = await mpResponse.value.json();
-                            const mpSection = mpData?.Record?.Section?.[0]?.Section?.[0]?.Information?.[0];
+                            const mpSection = mpData?.Record?.Section?.[0]?.Section?.[0]?.Section?.[0]?.Information?.[0];
                             physicalProps.meltingPoint = mpSection?.Value?.StringWithMarkup?.[0]?.String || null;
                             console.log('[Fetch] Melting Point:', physicalProps.meltingPoint);
                         } catch (e) {
@@ -3091,7 +3110,7 @@
                     if (densityResponse.status === 'fulfilled' && densityResponse.value.ok) {
                         try {
                             const densityData = await densityResponse.value.json();
-                            const densitySection = densityData?.Record?.Section?.[0]?.Section?.[0]?.Information?.[0];
+                            const densitySection = densityData?.Record?.Section?.[0]?.Section?.[0]?.Section?.[0]?.Information?.[0];
                             physicalProps.density = densitySection?.Value?.StringWithMarkup?.[0]?.String || null;
                             console.log('[Fetch] Density:', physicalProps.density);
                         } catch (e) {
@@ -3154,6 +3173,7 @@
                     <button class="remove-btn" onclick="removeReagentRow('${reagentId}')" aria-label="Remove reagent">✕</button>
                 </div>
                 <canvas id="canvas-${reagentId}" class="reagent-canvas compound-canvas" width="450" height="300" data-reagent-id="${reagentId}" role="img" aria-label="Reagent molecular structure" style="background:#ffffff;"></canvas>
+                <span class="error-message reagent-error" id="error-${reagentId}"></span>
                 <div class="card-field">
                     <label>SMILES</label>
                     <input type="text" class="reagent-smiles" placeholder="SMILES notation" data-canvas-id="canvas-${reagentId}">
